@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Daftar Kehadiran | SPKB | Perbadanan Labuan</title>
+  <meta name="description" content="Borang pendaftaran kehadiran untuk program Perbadanan Labuan." />
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    .progress-bar-wrap {
+      background: rgba(255,255,255,0.07);
+      border-radius: 100px;
+      height: 4px;
+      margin-bottom: 0.5rem;
+      overflow: hidden;
+    }
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--primary-light), var(--accent));
+      border-radius: 100px;
+      transition: width 0.4s ease;
+    }
+    .char-count {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-align: right;
+      margin-top: 0.25rem;
+    }
+    .ic-hint {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-top: 0.35rem;
+    }
+    .ic-hint span { color: var(--accent-light); }
+    .terms-check {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.6rem;
+      margin-top: 0.5rem;
+    }
+    .terms-check input { margin-top: 3px; accent-color: var(--primary-light); }
+    .terms-check label { font-size: 0.83rem; color: var(--text-muted); cursor: pointer; }
+    .submit-area { margin-top: 1.75rem; }
+    .lang-toggle {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: center;
+      margin-bottom: 1.5rem;
+    }
+    .lang-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      border-radius: 100px;
+      padding: 0.3rem 0.9rem;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: var(--transition);
+      font-family: 'Inter', sans-serif;
+    }
+    .lang-btn.active {
+      background: rgba(37,99,168,0.2);
+      border-color: var(--primary-light);
+      color: #93c5fd;
+    }
+    .info-note {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.6rem;
+      background: rgba(37,99,168,0.08);
+      border: 1px solid rgba(37,99,168,0.2);
+      border-radius: var(--radius-sm);
+      padding: 0.75rem 1rem;
+      margin-bottom: 1.5rem;
+      font-size: 0.82rem;
+      color: #93c5fd;
+    }
+    /* Lucide Icon Alignment */
+    [data-lucide], svg.lucide {
+      display: inline-block;
+      vertical-align: middle;
+      width: 1em;
+      height: 1em;
+      stroke-width: 1.75;
+      flex-shrink: 0;
+    }
+    .btn [data-lucide], .btn svg.lucide {
+      width: 16px;
+      height: 16px;
+      margin-right: 0.35rem;
+      position: relative;
+      top: -0.5px;
+    }
+    .info-note [data-lucide], .info-note svg.lucide {
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .footer-contact-item [data-lucide], .footer-contact-item svg.lucide {
+      width: 20px;
+      height: 20px;
+      flex-shrink: 0;
+      opacity: 0.8;
+      margin-top: 2px;
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-gradient"></div>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <a href="index.html" class="navbar-brand">
+      <img src="https://www.cstcl.com.my/wp-content/uploads/2018/12/Logo-Perbadanan-Labuan.png" alt="Logo Perbadanan Labuan" class="navbar-logo-img">
+      <div class="navbar-title">
+        <span>Perbadanan Labuan</span>
+        <strong style="font-size: 1.15rem; letter-spacing: 0.02em;">Sistem Pengiktirafan Kehadiran Bersepadu (SPKB)</strong>
+      </div>
+    </a>
+    <div class="navbar-links">
+      <a href="index.html">Laman Utama</a>
+      <a href="form.html" class="active">Daftar Kehadiran</a>
+    </div>
+  </nav>
+
+  <div class="form-container">
+
+    <!-- Language Toggle -->
+    <div class="lang-toggle">
+      <button class="lang-btn active" id="lang-bm" onclick="setLang('bm')">🇲🇾 BM</button>
+      <button class="lang-btn" id="lang-en" onclick="setLang('en')">🇬🇧 EN</button>
+    </div>
+
+    <div class="form-card fade-in">
+      <div class="form-header">
+
+        <h2 id="form-title">Borang Kehadiran</h2>
+        <p id="form-subtitle">Sila isi maklumat anda dengan tepat dan lengkap.</p>
+      </div>
+
+      <!-- Progress -->
+      <div class="progress-bar-wrap">
+        <div class="progress-bar" id="progress-bar" style="width: 0%"></div>
+      </div>
+
+      <!-- Info note -->
+      <div class="info-note">
+        <i data-lucide="info"></i> <span id="info-note-text">Maklumat anda akan digunakan untuk penjanaan sijil penyertaan secara automatik.</span>
+      </div>
+
+      <form id="attendance-form" novalidate>
+
+        <!-- Full Name -->
+        <div class="form-group">
+          <label class="form-label" for="fullname">
+            <span id="label-name">Nama Penuh</span> / Full Name
+            <span class="required">*</span>
+          </label>
+          <input
+            type="text"
+            id="fullname"
+            name="fullname"
+            class="form-input"
+            placeholder="Contoh: Ahmad bin Abdullah"
+            maxlength="100"
+            autocomplete="name"
+          />
+          <div class="char-count"><span id="name-count">0</span>/100</div>
+          <div class="form-error" id="error-fullname">Sila masukkan nama penuh anda.</div>
+        </div>
+
+        <!-- IC Number -->
+        <div class="form-group">
+          <label class="form-label" for="ic">
+            No. Kad Pengenalan / IC Number
+            <span class="required">*</span>
+          </label>
+          <input
+            type="text"
+            id="ic"
+            name="ic"
+            class="form-input"
+            placeholder="Contoh: 900101-12-3456"
+            maxlength="14"
+            inputmode="numeric"
+          />
+          <div class="ic-hint">Format: <span>YYMMDD-PB-XXXX</span> (dengan atau tanpa sempang / with or without dashes)</div>
+          <div class="form-error" id="error-ic">Sila masukkan nombor kad pengenalan yang sah.</div>
+        </div>
+
+        <!-- Phone -->
+        <div class="form-group">
+          <label class="form-label" for="phone">
+            No. Telefon / Phone Number
+            <span class="required">*</span>
+          </label>
+          <input
+            type="tel"
+            id="phone"
+            name="phone"
+            class="form-input"
+            placeholder="Contoh: 0123456789"
+            maxlength="15"
+            autocomplete="tel"
+          />
+          <div class="form-error" id="error-phone">Sila masukkan nombor telefon yang sah.</div>
+        </div>
+
+        <hr class="form-divider" />
+
+        <!-- Email (optional) -->
+        <div class="form-group">
+          <label class="form-label" for="email">
+            E-mel / Email
+            <span class="optional">(Pilihan / Optional)</span>
+          </label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            class="form-input"
+            placeholder="contoh@email.com"
+            autocomplete="email"
+          />
+          <div class="form-error" id="error-email">Sila masukkan alamat e-mel yang sah.</div>
+        </div>
+
+        <!-- Organization (Dropdown) -->
+        <div class="form-group">
+          <label class="form-label" for="organization">
+            Jabatan / Jawatan
+            <span class="required">*</span>
+          </label>
+          <select id="organization" name="organization" class="form-input">
+            <option value="" disabled selected>Pilih Jabatan / Select Department</option>
+            <option value="Pejabat Pengerusi">Pejabat Pengerusi</option>
+            <option value="Pejabat Ketua Pegawai Eksekutif">Pejabat Ketua Pegawai Eksekutif</option>
+            <option value="Pejabat Timbalan Ketua Pegawai Eksekutif">Pejabat Timbalan Ketua Pegawai Eksekutif</option>
+            <option value="Pejabat Penasihat Undang-Undang">Pejabat Penasihat Undang-Undang</option>
+            <option value="Jabatan Audit Dalam">Jabatan Audit Dalam</option>
+            <option value="Jabatan Hal Ehwal Korporat">Jabatan Hal Ehwal Korporat</option>
+            <option value="Unit Dasar dan Integriti">Unit Dasar dan Integriti</option>
+            <option value="Jabatan Khidmat Pengurusan">Jabatan Khidmat Pengurusan</option>
+            <option value="Pusat Transformasi Bandar (UTC)">Pusat Transformasi Bandar (UTC)</option>
+            <option value="Jabatan Pengurusan Sumber Manusia">Jabatan Pengurusan Sumber Manusia</option>
+            <option value="Unit Perkhidmatan JPSM">Unit Perkhidmatan JPSM</option>
+            <option value="Unit Latihan JPSM">Unit Latihan JPSM</option>
+            <option value="Jabatan Kewangan">Jabatan Kewangan</option>
+            <option value="Jabatan Digital Dan Informasi">Jabatan Digital Dan Informasi</option>
+            <option value="Perpustakaan Awam Labuan">Perpustakaan Awam Labuan</option>
+            <option value="Jabatan Pembangunan & Kejuruteraan">Jabatan Pembangunan & Kejuruteraan</option>
+            <option value="Jabatan Perancangan & Kawalan Bangunan">Jabatan Perancangan & Kawalan Bangunan</option>
+            <option value="Jabatan Sosio Ekonomi">Jabatan Sosio Ekonomi</option>
+            <option value="Jabatan Pelancongan, Kebudayaan, dan Kesenian">Jabatan Pelancongan, Kebudayaan, dan Kesenian</option>
+            <option value="Majlis Sukan Labuan">Majlis Sukan Labuan</option>
+            <option value="Unit Penyelarasan, Pemantauan dan Penilaian Impak">Unit Penyelarasan, Pemantauan dan Penilaian Impak</option>
+            <option value="Jabatan Penilaian dan pengurusan Harta">Jabatan Penilaian dan pengurusan Harta</option>
+            <option value="Jabatan Perkhidmatan Perbandaran">Jabatan Perkhidmatan Perbandaran</option>
+            <option value="Jabatan Penguatkuasaan">Jabatan Penguatkuasaan</option>
+            <option value="Jabatan Pelesenan">Jabatan Pelesenan</option>
+            <option value="Unit Pelaburan PL">Unit Pelaburan PL</option>
+            <option disabled>─────────────────────────</option>
+            <option value="Agensi Kerajaan Lain">Agensi Kerajaan Lain / Other Gov Agency</option>
+            <option value="Sektor Swasta / NGO">Sektor Swasta / NGO / Private Sector</option>
+            <option value="Orang Awam">Orang Awam / Public / Citizen</option>
+            <option value="Lain-Lain">Lain-Lain / Others</option>
+          </select>
+          <div class="form-error" id="error-organization">Sila pilih Jabatan/Jawatan anda.</div>
+        </div>
+
+        <!-- Terms -->
+        <div class="terms-check">
+          <input type="checkbox" id="terms" name="terms" />
+          <label for="terms" id="label-terms">
+            Saya bersetuju maklumat ini digunakan untuk tujuan pengurusan kehadiran dan penjanaan sijil.
+            <em style="color: var(--text-muted); display: block; margin-top: 2px;">I agree that this information is used for attendance management and certificate generation purposes.</em>
+          </label>
+        </div>
+        <div class="form-error" id="error-terms">Sila tandakan kotak persetujuan untuk meneruskan.</div>
+
+        <!-- Submit -->
+        <div class="submit-area">
+          <button type="submit" class="btn btn-accent btn-full btn-lg" id="submit-btn">
+            <span id="submit-text"><i data-lucide="send"></i> Hantar Kehadiran / Submit Attendance</span>
+            <span class="spinner" id="submit-spinner" style="display:none;"></span>
+          </button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+
+  <footer style="width: 100%; margin-top: auto; background: rgba(255, 255, 255, 0.02); border-top: 1px solid rgba(255, 255, 255, 0.05); padding: 2.5rem 5% 1rem; backdrop-filter: blur(10px);">
+    <div style="max-width: 1200px; margin: 0 auto;">
+      <div class="footer-row" style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2rem; align-items: flex-start; text-align: left;">
+        
+        <!-- Location -->
+        <div class="footer-col" style="width: 260px;">
+          <h4 style="color: var(--primary-light); font-size: 1.1rem; margin-bottom: 1.2rem; text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 0.5rem; margin-top: 0;">
+            <i data-lucide="map-pin"></i>
+            Lokasi Kami
+          </h4>
+          <div style="color: rgba(255,255,255,0.7); font-size: 1rem; line-height: 1.7;">
+            <strong style="color: #fff;">Perbadanan Labuan</strong><br>
+            Wisma Perbadanan Labuan,<br>
+            Peti Surat 81245,<br>87022 WP Labuan
+          </div>
+        </div>
+
+        <!-- Map -->
+        <div class="footer-col" style="width: 450px; max-width: 100%;">
+          <div style="width: 100%; height: 220px; border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 12px rgba(0,0,0,0.2);">
+            <iframe width="100%" height="100%" frameborder="0" scrolling="no" marginheight="0" marginwidth="0" src="https://maps.google.com/maps?q=Wisma%20Perbadanan%20Labuan&t=&z=16&ie=UTF8&iwloc=&output=embed" style="filter: contrast(1.1);"></iframe>
+          </div>
+        </div>
+
+        <!-- Contact (Right Group) -->
+        <div class="footer-col" style="width: 320px;">
+          <h4 style="color: var(--primary-light); font-size: 1.1rem; margin-bottom: 1.2rem; text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 0.5rem; margin-top: 0;">
+            <i data-lucide="headset"></i>
+            Hubungi Kami
+          </h4>
+          <div style="display: flex; flex-direction: column; gap: 0.85rem; color: rgba(255,255,255,0.7); font-size: 1rem;">
+            <div class="footer-contact-item" style="display: flex; gap: 0.75rem; align-items: flex-start;">
+              <i data-lucide="phone" style="width:20px;height:20px;opacity:0.8;"></i> <span style="line-height: 1.4;">087-408600 / 087-408738<br><span style="opacity:0.6; font-size:0.85rem;">(Khidmat Pelanggan)</span></span>
+            </div>
+            <div class="footer-contact-item" style="display: flex; gap: 0.75rem; align-items: flex-start;">
+              <i data-lucide="printer" style="width:20px;height:20px;opacity:0.8;"></i> <span style="line-height: 1.4;">087-428997<br><span style="opacity:0.6; font-size:0.85rem;">(Faks)</span></span>
+            </div>
+            <div class="footer-contact-item" style="display: flex; gap: 0.75rem; align-items: flex-start;">
+              <i data-lucide="clock" style="width:20px;height:20px;opacity:0.8;"></i> <span style="line-height: 1.4;">8.00 Pagi - 5.00 Petang<br><span style="opacity:0.6; font-size:0.85rem;">(Isnin - Jumaat)</span></span>
+            </div>
+            <div class="footer-contact-item" style="display: flex; gap: 0.75rem; align-items: flex-start; margin-top: 0.25rem;">
+              <i data-lucide="globe" style="width:20px;height:20px;opacity:0.8;"></i> <span style="line-height: 1.4;"><a href="https://www.pl.gov.my" target="_blank" style="color: var(--accent); text-decoration: none; font-weight: bold;">www.pl.gov.my</a><br><span style="opacity:0.6; font-size:0.85rem;">(Laman Web Rasmi)</span></span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="footer-bottom" style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; color: rgba(255,255,255,0.4); flex-wrap: wrap; gap: 0.5rem;">
+        <div>© 2026 Hak Cipta Terpelihara Perbadanan Labuan</div>
+        <a href="admin.html" style="color: inherit; text-decoration: none; transition: color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,0.4)'">Panel Admin SPKB</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Toast -->
+  <div class="toast" id="toast" role="alert"></div>
+
+  <script src="js/form.js"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script>lucide.createIcons();</script>
+</body>
+</html>

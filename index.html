@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SPKB | Perbadanan Labuan</title>
+  <meta name="description" content="Sistem pengurusan kehadiran dan penjanaan sijil automatik untuk program-program Perbadanan Labuan." />
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1.25rem;
+      max-width: 1000px;
+      margin: 0 auto 4rem;
+      padding: 0 2rem;
+    }
+    .feature-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.75rem;
+      backdrop-filter: blur(12px);
+      transition: var(--transition);
+    }
+    .feature-card:hover {
+      border-color: var(--border-accent);
+      transform: translateY(-4px);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+    }
+    .feature-icon {
+      width: 52px; height: 52px; border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5rem; margin-bottom: 1rem;
+    }
+    .feature-icon-blue { background: rgba(37,99,168,0.2); }
+    .feature-icon-gold { background: rgba(200,150,62,0.2); }
+    .feature-icon-green { background: rgba(22,163,74,0.2); }
+    .feature-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 0.4rem; }
+    .feature-card p { font-size: 0.85rem; color: var(--text-muted); line-height: 1.6; }
+    .hero-btns { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+    .section-label {
+      text-align: center; font-size: 0.78rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.1em;
+      color: var(--text-muted); margin-bottom: 1rem;
+    }
+    .steps-wrap {
+      display: flex; justify-content: center; gap: 0; flex-wrap: wrap;
+      max-width: 900px; margin: 0 auto 4rem; padding: 0 2rem; position: relative;
+    }
+    .step {
+      display: flex; flex-direction: column; align-items: center;
+      text-align: center; flex: 1; min-width: 150px; padding: 0 1rem; position: relative;
+    }
+    .step::after {
+      content: '→'; position: absolute; right: -0.5rem; top: 1.1rem;
+      color: var(--accent); font-size: 1.2rem;
+    }
+    .step:last-child::after { display: none; }
+    .step-num {
+      width: 44px; height: 44px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary-light), var(--accent));
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 1rem; margin-bottom: 0.75rem;
+      box-shadow: 0 4px 16px rgba(37,99,168,0.4);
+    }
+    .step h4 { font-size: 0.9rem; font-weight: 600; margin-bottom: 0.3rem; }
+    .step p { font-size: 0.78rem; color: var(--text-muted); }
+    @media (min-width: 900px) {
+      .hero-intro { text-align: left !important; }
+      .hero-intro h1 { text-align: left !important; }
+      .hero-intro p { text-align: left !important; margin: 0 0 2rem 0 !important; }
+      .hero-intro .hero-btns { justify-content: flex-start !important; }
+    }
+    /* Lucide Icon Alignment */
+    [data-lucide], svg.lucide {
+      display: inline-block;
+      vertical-align: middle;
+      width: 1em;
+      height: 1em;
+      stroke-width: 1.75;
+      flex-shrink: 0;
+    }
+    .btn [data-lucide], .btn svg.lucide {
+      width: 16px;
+      height: 16px;
+      margin-right: 0.35rem;
+      position: relative;
+      top: -0.5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-gradient"></div>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <a href="index.html" class="navbar-brand">
+      <img src="https://www.cstcl.com.my/wp-content/uploads/2018/12/Logo-Perbadanan-Labuan.png" alt="Logo Perbadanan Labuan" class="navbar-logo-img">
+      <div class="navbar-title">
+        <span>Perbadanan Labuan</span>
+        <strong style="font-size: 1.15rem; letter-spacing: 0.02em;">Sistem Pengiktirafan Kehadiran Bersepadu (SPKB)</strong>
+      </div>
+    </a>
+    <div class="navbar-links">
+      <a href="index.html" class="active">Laman Utama</a>
+      <a href="form.html">Daftar Kehadiran</a>
+    </div>
+  </nav>
+
+  <!-- Split Layout Wrapper -->
+  <div style="max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 2rem; padding: 5rem 2rem 4rem; flex-wrap: wrap;">
+    
+    <!-- Left Column: Hero Intro -->
+    <div class="hero fade-in hero-intro" style="flex: 1.2; min-width: 320px; padding: 0;">
+      <h1 style="font-size: clamp(2rem, 4.5vw, 3.5rem);">Sistem Pengiktirafan Kehadiran<br>Bersepadu (SPKB)</h1>
+      <p style="margin-bottom: 2rem; font-size: 1.1rem; max-width: 580px;">Daftar kehadiran anda dengan mudah dan dapatkan sijil penyertaan yang dijana secara automatik, tanpa kertas dan tanpa kelewatan.</p>
+      <div class="hero-btns">
+        <a href="form.html" class="btn btn-accent btn-lg" id="cta-register"><i data-lucide="clipboard-list"></i> Daftar Kehadiran</a>
+      </div>
+    </div>
+
+    <!-- Right Column: Certificate Status Check -->
+    <div class="form-container fade-in-delay-1" style="flex: 1; max-width: 450px; min-width: 320px; margin: 0 auto; padding: 0;">
+      <div class="card" style="text-align: center; border-color: rgba(22,163,74,0.3); box-shadow: 0 10px 40px rgba(0,0,0,0.2); padding: 2.5rem 1.5rem; background: rgba(255,255,255,0.03);">
+        <h3 style="font-size:1.15rem; color:var(--text); margin-bottom:0.5rem;">Semak Status Sijil</h3>
+        <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1.5rem;">Masukkan No. Kad Pengenalan anda untuk muat turun sijil selepas program</p>
+        <div style="display:flex; gap:0.5rem; justify-content:center; align-items:stretch; margin-bottom: 1rem; flex-wrap: wrap;">
+          <input type="text" id="check-ic" class="form-input" placeholder="No. IC (Cth: 900101123456)" style="max-width: 250px; flex: 1;" onkeydown="if(event.key==='Enter') checkCertStatus()" />
+          <button class="btn btn-primary" onclick="checkCertStatus()" id="btn-check"><i data-lucide="search"></i> Semak</button>
+        </div>
+        <div id="check-result" style="display:none; padding: 1.25rem; border-radius: var(--radius-sm); background: rgba(0,0,0,0.2); border: 1px solid var(--border); font-size: 0.85rem;">
+        </div>
+      </div>
+    </div>
+    
+  </div>
+
+  <!-- How it works -->
+  <div class="section-label fade-in-delay-1">Cara Penggunaan / How It Works</div>
+  <div class="steps-wrap fade-in-delay-1">
+    <div class="step">
+      <div class="step-num">1</div>
+      <h4>Isi Borang</h4>
+      <p>Masukkan maklumat anda / Enter your details</p>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <h4>Hantar</h4>
+      <p>Sahkan kehadiran / Submit attendance</p>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <h4>Selesai</h4>
+      <p>Terima sijil penyertaan / Receive certificate</p>
+    </div>
+  </div>
+
+  <footer style="width: 100%; margin-top: auto; background: rgba(255, 255, 255, 0.02); border-top: 1px solid rgba(255, 255, 255, 0.05); padding: 2.5rem 5% 1rem; backdrop-filter: blur(10px);">
+    <div style="max-width: 1200px; margin: 0 auto;">
+      <div class="footer-row" style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2rem; align-items: flex-start; text-align: left;">
+        <!-- Location -->
+        <div class="footer-col" style="width: 260px;">
+          <h4 style="color: var(--primary-light); font-size: 1.1rem; margin-bottom: 1.2rem; text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 0.5rem; margin-top: 0;">
+            <i data-lucide="map-pin"></i>
+            Lokasi Kami
+          </h4>
+          <div style="color: rgba(255,255,255,0.7); font-size: 1rem; line-height: 1.7;">
+            <strong style="color: #fff;">Perbadanan Labuan</strong><br>
+            Wisma Perbadanan Labuan,<br>
+            Peti Surat 81245,<br>87022 WP Labuan
+          </div>
+        </div>
+        <!-- Map -->
+        <div class="footer-col" style="width: 450px; max-width: 100%;">
+          <div style="width: 100%; height: 220px; border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 12px rgba(0,0,0,0.2);">
+            <iframe width="100%" height="100%" frameborder="0" scrolling="no" marginheight="0" marginwidth="0" src="https://maps.google.com/maps?q=Wisma%20Perbadanan%20Labuan&t=&z=16&ie=UTF8&iwloc=&output=embed" style="filter: contrast(1.1);"></iframe>
+          </div>
+        </div>
+        <!-- Contact -->
+        <div class="footer-col" style="width: 320px;">
+          <h4 style="color: var(--primary-light); font-size: 1.1rem; margin-bottom: 1.2rem; text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 0.5rem; margin-top: 0;">
+            <i data-lucide="headset"></i>
+            Hubungi Kami
+          </h4>
+          <div style="display: flex; flex-direction: column; gap: 0.85rem; color: rgba(255,255,255,0.7); font-size: 1rem;">
+            <div class="footer-contact-item" style="display: flex; gap: 0.75rem; align-items: flex-start;">
+              <i data-lucide="phone" style="width:20px;height:20px;flex-shrink:0;opacity:0.8;margin-top:2px;"></i> <span style="line-height: 1.4;">087-408600 / 087-408738<br><span style="opacity:0.6; font-size:0.85rem;">(Khidmat Pelanggan)</span></span>
+            </div>
+            <div class="footer-contact-item" style="display: flex; gap: 0.75rem; align-items: flex-start;">
+              <i data-lucide="printer" style="width:20px;height:20px;flex-shrink:0;opacity:0.8;margin-top:2px;"></i> <span style="line-height: 1.4;">087-428997<br><span style="opacity:0.6; font-size:0.85rem;">(Faks)</span></span>
+            </div>
+            <div class="footer-contact-item" style="display: flex; gap: 0.75rem; align-items: flex-start;">
+              <i data-lucide="clock" style="width:20px;height:20px;flex-shrink:0;opacity:0.8;margin-top:2px;"></i> <span style="line-height: 1.4;">8.00 Pagi - 5.00 Petang<br><span style="opacity:0.6; font-size:0.85rem;">(Isnin - Jumaat)</span></span>
+            </div>
+            <div class="footer-contact-item" style="display: flex; gap: 0.75rem; align-items: flex-start; margin-top: 0.25rem;">
+              <i data-lucide="globe" style="width:20px;height:20px;flex-shrink:0;opacity:0.8;margin-top:2px;"></i> <span style="line-height: 1.4;"><a href="https://www.pl.gov.my" target="_blank" style="color: var(--accent); text-decoration: none; font-weight: bold;">www.pl.gov.my</a><br><span style="opacity:0.6; font-size:0.85rem;">(Laman Web Rasmi)</span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="footer-bottom" style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; color: rgba(255,255,255,0.4); flex-wrap: wrap; gap: 0.5rem;">
+        <div>© 2026 Hak Cipta Terpelihara Perbadanan Labuan</div>
+        <a href="admin.html" style="color: inherit; text-decoration: none; transition: color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,0.4)'">Panel Admin SPKB</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script>lucide.createIcons();</script>
+  <script>
+    const API_URL = "http://127.0.0.1:8000/api/attendance/";
+    let certInterval = null;
+
+    let currentParticipant = null;
+
+    async function checkCertStatus() {
+      const ic = document.getElementById('check-ic').value.trim().replace(/\D/g, '');
+      const resultDiv = document.getElementById('check-result');
+
+      if (!ic) {
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = '<span style="color:#f87171;">Sila masukkan No. IC.</span>';
+        return;
+      }
+
+      resultDiv.style.display = 'block';
+      resultDiv.innerHTML = '<span style="color:#93c5fd;">Menyemak rekod...</span>';
+      if (certInterval) { clearInterval(certInterval); certInterval = null; }
+
+      try {
+        const res = await fetch(API_URL + 'participant/' + ic + '/');
+        const data = await res.json();
+
+        if (data.status !== 'success' || !data.data?.length) {
+          resultDiv.innerHTML = '<span style="color:#fca5a5;">Rekod tidak dijumpai. Pastikan No. IC betul atau daftar kehadiran dahulu.</span>';
+          return;
+        }
+
+        const participant = data.data[0];
+        currentParticipant = participant; // Save for download generator
+
+        const submitTime = new Date(participant.raw_date).getTime();
+        const delayMs = participant.cert_delay || 120000;
+        const targetTime = submitTime + delayMs;
+
+        const updateTimer = () => {
+          const diff = targetTime - Date.now();
+          if (diff <= 0) {
+            clearInterval(certInterval);
+            resultDiv.innerHTML = `
+              <div style="color:#4ade80; margin-bottom:1rem; font-weight:600; font-size: 0.95rem;">Sijil anda sedia dimuat turun!</div>
+              <button class="btn btn-success btn-full" onclick="downloadCert()" id="btn-dl-index">
+                Muat Turun Sijil
+              </button>`;
+          } else {
+            const h = Math.floor(diff / (1000 * 60 * 60));
+            const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const s = Math.floor((diff % (1000 * 60)) / 1000);
+            
+            let timeStr = '';
+            if (h > 0) timeStr += `${h}j `;
+            timeStr += `${m}m ${s}s`;
+            
+            resultDiv.innerHTML = `
+              <div style="color:var(--accent-light); margin-bottom:0.5rem; font-weight:600;">Program masih berlangsung</div>
+              Sijil sedang dijana... Sila tunggu:<br>
+              <strong style="font-size:1.4rem; color:white; display:inline-block; margin-top:0.5rem; letter-spacing: 1px;">${timeStr}</strong>`;
+          }
+        };
+        updateTimer();
+        certInterval = setInterval(updateTimer, 1000);
+      } catch (err) {
+        console.error(err);
+        resultDiv.innerHTML = '<span style="color:#fca5a5;">Ralat sambungan ke pelayan. Pastikan server Django sedang berjalan.</span>';
+      }
+    }
+
+    function getSettings() {
+      const s = JSON.parse(localStorage.getItem('cert_settings') || '{}');
+      return {
+        nameX: s.nameX ?? 500, nameY: s.nameY ?? 360, nameFontSize: s.nameFontSize ?? 42,
+        icX: s.icX ?? 500, icY: s.icY ?? 470, icFontSize: s.icFontSize ?? 28,
+        showIC: s.showIC ?? true, textColor: s.textColor ?? '#f0f4f8',
+        fontFamily: s.fontFamily ?? 'Palatino, serif'
+      };
+    }
+
+    function loadImage(src) {
+      return new Promise((res, rej) => { const img = new Image(); img.onload = () => res(img); img.onerror = rej; img.src = src; });
+    }
+
+    function overlayText(ctx, p, s, w, h) {
+      ctx.textAlign = 'center';
+      ctx.fillStyle = s.textColor;
+      ctx.font = `bold ${s.nameFontSize}px ${s.fontFamily}`;
+      ctx.fillText(p.fullname, s.nameX, s.nameY);
+      if (s.showIC && p.ic_number) {
+        ctx.font = `bold ${s.icFontSize}px ${s.fontFamily}`;
+        ctx.fillText(p.ic_number, s.icX, s.icY);
+      }
+    }
+
+    function drawDefaultCertBg(ctx, w, h) {
+      ctx.fillStyle = '#0d2238'; ctx.fillRect(0, 0, w, h);
+      ctx.strokeStyle = '#c8963e'; ctx.lineWidth = 8; ctx.strokeRect(20, 20, w - 40, h - 40);
+      ctx.lineWidth = 2; ctx.strokeRect(34, 34, w - 68, h - 68);
+      ctx.fillStyle = '#e8b96a'; ctx.font = 'bold 28px Palatino, serif'; ctx.textAlign = 'center';
+      ctx.fillText('PERBADANAN LABUAN', w / 2, 100);
+      ctx.fillStyle = '#f0f4f8'; ctx.font = 'bold 38px Palatino, serif';
+      ctx.fillText('SIJIL PENYERTAAN', w / 2, 160);
+      ctx.fillStyle = '#94a3b8'; ctx.font = '22px Palatino, serif';
+      ctx.fillText('CERTIFICATE OF PARTICIPATION', w / 2, 195);
+      ctx.strokeStyle = '#c8963e'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(100, 220); ctx.lineTo(w - 100, 220); ctx.stroke();
+      ctx.fillStyle = '#94a3b8'; ctx.font = '20px Palatino, serif';
+      ctx.fillText('Diberikan kepada / Awarded to', w / 2, 290);
+      ctx.strokeStyle = '#c8963e55'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(150, 410); ctx.lineTo(w - 150, 410); ctx.stroke();
+      ctx.fillStyle = '#94a3b8'; ctx.font = '16px Palatino, serif';
+      ctx.fillText('No. Kad Pengenalan / IC Number:', w / 2, 450);
+      ctx.strokeStyle = '#c8963e'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(100, h - 130); ctx.lineTo(w - 100, h - 130); ctx.stroke();
+      ctx.fillStyle = '#94a3b8'; ctx.font = '16px Palatino, serif';
+      ctx.fillText('_______________________________', w / 2, h - 90);
+      ctx.fillText('Tandatangan / Signature', w / 2, h - 68);
+      ctx.fillText('Perbadanan Labuan', w / 2, h - 48);
+    }
+
+    async function downloadCert() {
+      if (!currentParticipant) return;
+      
+      const btn = document.getElementById('btn-dl-index');
+      btn.innerHTML = '<span class="spinner" style="width:16px;height:16px;border-width:2px; display:inline-block; margin-right: 5px;"></span> Menjana Sijil...';
+      btn.disabled = true;
+
+      try {
+        if (typeof window.jspdf === 'undefined') {
+          await new Promise((res, rej) => {
+            const s = document.createElement('script');
+            s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+            s.onload = res; s.onerror = rej; document.head.appendChild(s);
+          });
+        }
+
+        const s = getSettings();
+        const tpl = localStorage.getItem('cert_template');
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const { jsPDF } = window.jspdf;
+        
+        let bg = null;
+        if (tpl) bg = await loadImage(tpl);
+        
+        const W = bg ? (bg.naturalWidth || bg.width) : 1000;
+        const H = bg ? (bg.naturalHeight || bg.height) : 707;
+        
+        const pdf = new jsPDF({ orientation: W > H ? 'landscape' : 'portrait', unit: 'px', format: [W, H] });
+        
+        canvas.width = W; canvas.height = H;
+        if (bg) ctx.drawImage(bg, 0, 0, W, H); else drawDefaultCertBg(ctx, W, H);
+        
+        overlayText(ctx, currentParticipant, s, W, H);
+        
+        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, W, H);
+        pdf.save(`Sijil_${currentParticipant.fullname.replace(/\s+/g, '_')}.pdf`);
+        
+        btn.innerHTML = 'Berjaya Dimuat Turun!';
+        setTimeout(() => {
+           btn.innerHTML = 'Muat Turun Sijil Semula';
+           btn.disabled = false;
+        }, 3000);
+      } catch (e) {
+        console.error(e);
+        btn.innerHTML = 'Ralat. Cuba lagi.';
+        btn.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>

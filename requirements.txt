@@ -1,0 +1,7 @@
+Django>=6.0,<7.0
+djangorestframework>=3.15,<4.0
+django-cors-headers>=4.3,<5.0
+xhtml2pdf>=0.2,<0.3
+pytest>=7.0
+pytest-django>=4.5
+pytest-watch>=4.2
