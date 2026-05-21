@@ -319,6 +319,24 @@ class RecordListViewTest(APITestCaseBase):
         self.assertEqual(remaining_record.fullname, 'Bob Johnson')
         self.assertEqual(remaining_record.program, self.program2)
 
+    def test_record_list_delete_by_ids(self):
+        """Test deleting specific records by ID list"""
+        url = reverse('record_list')
+        # Get all records to extract IDs
+        records = AttendanceRecord.objects.all()
+        id1 = str(records[0].id)
+        id2 = str(records[1].id)
+        
+        # Send DELETE request with JSON payload containing 'ids'
+        response = self.client.delete(url, data={'ids': [id1, id2]}, format='json')
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['status'], 'success')
+        self.assertEqual(response.data['deleted'], 2)
+
+        # Verify only 1 record remains
+        self.assertEqual(AttendanceRecord.objects.count(), 1)
+
 
 class RecordDetailViewTest(APITestCaseBase):
     """Test cases for RecordDetailView"""

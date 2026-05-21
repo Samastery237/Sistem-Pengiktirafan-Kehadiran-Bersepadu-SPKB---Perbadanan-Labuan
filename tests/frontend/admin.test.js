@@ -93,10 +93,14 @@ describe('Admin Panel Frontend Logic', () => {
 
   describe('Participant Management (TDD)', () => {
     test('openEditModal() should populate the edit form correctly', () => {
-      // Mock global records data that admin.js expects
-      window.cachedRecords = [
-        { id: '123', fullname: 'John Doe', ic_number: '111', phone: '012', email: 'j@d.com', organization: 'Org A' }
-      ];
+      // Mock global records data by evaluating a script in jsdom
+      const injectScript = document.createElement('script');
+      injectScript.textContent = `
+        cachedRecords = [
+          { id: '123', fullname: 'John Doe', ic_number: '111', phone: '012', email: 'j@d.com', organization: 'Org A' }
+        ];
+      `;
+      document.body.appendChild(injectScript);
       
       // Inject the modal HTML expected by the test
       document.body.innerHTML += `

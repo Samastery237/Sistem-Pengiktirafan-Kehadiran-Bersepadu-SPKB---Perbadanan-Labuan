@@ -29,20 +29,30 @@ function doLogin() {
   }
 }
 
-function doLogout() {
+function performLogout() {
   localStorage.removeItem('pl_admin_session');
   location.reload();
 }
 
 function confirmLogout() {
   if (hasUnsavedChanges()) {
-    if (confirm('Anda ada perubahan yang belum disimpan. Log keluar akan menyebabkan perubahan hilang. Anda pasti ingin log keluar?')) {
-      doLogout();
-    }
+    openConfirmModal({
+      title: 'Perubahan Belum Disimpan',
+      message: 'Anda ada perubahan yang belum disimpan. Log keluar akan menyebabkan perubahan hilang. Anda pasti ingin log keluar?',
+      confirmText: 'Log Keluar',
+      confirmClass: 'btn-danger',
+      icon: 'log-out',
+      onConfirm: performLogout
+    });
   } else {
-    if (confirm('Anda pasti ingin log keluar?')) {
-      doLogout();
-    }
+    openConfirmModal({
+      title: 'Log Keluar',
+      message: 'Anda pasti ingin log keluar dari panel admin?',
+      confirmText: 'Log Keluar',
+      confirmClass: 'btn-danger',
+      icon: 'log-out',
+      onConfirm: performLogout
+    });
   }
 }
 
@@ -72,13 +82,16 @@ function hasUnsavedChanges() {
 // Confirm navigation to home (index.html) if there are unsaved changes
 function confirmNavigateHome() {
   if (hasUnsavedChanges()) {
-    if (confirm('Anda ada perubahan yang belum disimpan. Pergi ke rumah akan menyebabkan perubahan hilang. Anda pasti ingin pergi?')) {
-      return true;
-    } else {
-      return false;
-    }
+    openConfirmModal({
+      title: 'Perubahan Belum Disimpan',
+      message: 'Anda ada perubahan yang belum disimpan. Pergi ke laman utama akan menyebabkan perubahan hilang. Anda pasti ingin pergi?',
+      confirmText: 'Teruskan',
+      confirmClass: 'btn-primary',
+      icon: 'home',
+      onConfirm: () => window.location.href = 'index.html'
+    });
   } else {
-    return true;
+    window.location.href = 'index.html';
   }
 }
 
@@ -158,62 +171,74 @@ function changeProgram(val) {
 }
 
 async function createNewProgram() {
-  const name = prompt('Nama program baru:');
-  if (!name?.trim()) return;
-  try {
-    const res = await api('programs/', { method: 'POST', body: { name: name.trim() } });
-    if (res.status === 'success') {
-      currentProgramId = res.id;
-      await loadPrograms();
-      refreshData();
-      showToast('✅ Program berjaya dicipta!', 'success');
+  openPromptModal({
+    title: 'Tambah Program Baru',
+    placeholder: 'Nama program baru...',
+    confirmText: 'Tambah',
+    onConfirm: async (name) => {
+      if (!name || !name.trim()) return;
+      try {
+        const res = await api('programs/', { method: 'POST', body: { name: name.trim() } });
+        if (res.status === 'success') {
+          showToast('✅ Program ditambah!', 'success');
+          currentProgramId = res.id;
+          await loadPrograms();
+          refreshData();
+        }
+      } catch (e) {
+        showToast('❌ Gagal menambah program.', 'error');
+      }
     }
-  } catch (e) { showToast('❌ Gagal mencipta program.', 'error'); }
+  });
 }
 
 function showShareableLink() {
-  if (!currentProgramId) {
-    showToast('⚠️ Sila pilih program tertentu terlebih dahulu.', 'error');
-    return;
+  if (!currentProgramId) { 
+    openConfirmModal({ isAlert: true, title: 'Perhatian', message: 'Sila pilih program tertentu.', confirmText: 'OK', icon: 'info' }); 
+    return; 
   }
-
-  // Get program name for display
-  const programSelect = document.getElementById('program-selector');
-  const selectedOption = programSelect.options[programSelect.selectedIndex];
-  const programName = selectedOption.textContent.split(' (')[0]; // Remove the count part
-
-  // Create the shareable link
-  const shareableLink = `${window.location.origin}/form.html?program=${encodeURIComponent(programName)}`;
-
-  // Create a temporary textarea to copy the link
-  const textarea = document.createElement('textarea');
-  textarea.value = shareableLink;
-  document.body.appendChild(textarea);
-  textarea.select();
-
-  try {
-    const successful = document.execCommand('copy');
-    showToast(successful ? '🔗 Link disalin! Tempelkan untuk distribusi.' : '❌ Gagal menyalin link.', successful ? 'success' : 'error');
-  } catch (err) {
-    showToast('❌ Gagal menyalin link.', 'error');
-  }
-
-  document.body.removeChild(textarea);
-
-  // Also show the link in a prompt for manual copying if needed
-  prompt('Link untuk program "' + programName + '" (tekan Ctrl+C untuk salin):', shareableLink);
+  const programName = document.querySelector('#program-selector option:checked').text.split(' (')[0];
+  const baseUrl = window.location.origin + window.location.pathname.replace('admin.html', 'form.html');
+  const shareableLink = `${baseUrl}?program=${encodeURIComponent(programName)}`;
+  
+  openPromptModal({
+    title: `Link untuk program "${programName}"`,
+    defaultValue: shareableLink,
+    readOnly: true,
+    onConfirm: (val) => {
+      navigator.clipboard.writeText(val);
+      showToast('✅ Link disalin!', 'success');
+    }
+  });
 }
 
 async function deleteCurrentProgram() {
-  if (!currentProgramId) { alert('Sila pilih program tertentu.'); return; }
-  if (!confirm('Padam program ini dan SEMUA rekod kehadirannya?')) return;
-  try {
-    await api(`programs/${currentProgramId}/`, { method: 'DELETE' });
-    currentProgramId = null;
-    await loadPrograms();
-    refreshData();
-    showToast('🗑️ Program dipadam.', 'info');
-  } catch (e) { showToast('❌ Gagal memadam.', 'error'); }
+  if (!currentProgramId) { 
+    openConfirmModal({ isAlert: true, title: 'Perhatian', message: 'Sila pilih program tertentu.', confirmText: 'OK', icon: 'info' }); 
+    return; 
+  }
+  
+  openConfirmModal({
+    title: 'Padam Program?',
+    message: 'Adakah anda mahu memadam program ini dan SEMUA rekod kehadirannya?',
+    subMessage: 'Tindakan ini tidak boleh dibatalkan.',
+    confirmText: 'Padam Program',
+    confirmClass: 'btn-danger',
+    icon: 'trash-2',
+    onConfirm: async () => {
+      try {
+        const res = await api(`programs/${currentProgramId}/`, { method: 'DELETE' });
+        if (res.status === 'success') {
+          showToast('✅ Program dipadam!', 'success');
+          currentProgramId = '';
+          loadPrograms();
+          refreshData();
+        }
+      } catch (e) {
+        showToast('❌ Ralat memadam program.', 'error');
+      }
+    }
+  });
 }
 
 // ═══════════════════════════════════════
@@ -278,13 +303,14 @@ function renderAttendance() {
       <td style="font-size:0.78rem;color:var(--text-muted);white-space:nowrap;">${esc(r.timestamp)}</td>
       <td>
         <div style="display:flex; gap:0.5rem; justify-content:center;">
-          <button class="btn btn-ghost btn-sm" onclick="previewCertFor('${r.id}')" title="Papar Sijil" style="padding:0.3rem;"><i data-lucide="award"></i></button>
-          <button class="btn btn-ghost btn-sm" onclick="openEditModal('${r.id}')" title="Kemaskini" style="padding:0.3rem; color: var(--primary-light);"><i data-lucide="user-pen"></i></button>
-          <button class="btn btn-ghost btn-sm" onclick="deleteRecord('${r.id}')" title="Padam" style="padding:0.3rem; color: #f87171;"><i data-lucide="trash-2"></i></button>
+          <button class="btn btn-sm" onclick="previewCertFor('${r.id}')" title="Papar Sijil" style="padding:0.4rem; background:transparent; border:none; color:#60a5fa;"><i data-lucide="award" style="stroke-width:2.5;"></i></button>
+          <button class="btn btn-sm" onclick="openEditModal('${r.id}')" title="Kemaskini" style="padding:0.4rem; background:transparent; border:none; color:#fbbf24;"><i data-lucide="user-pen" style="stroke-width:2.5;"></i></button>
+          <button class="btn btn-sm" onclick="deleteRecord('${r.id}')" title="Padam" style="padding:0.4rem; background:transparent; border:none; color:#f87171;"><i data-lucide="trash-2" style="stroke-width:2.5;"></i></button>
         </div>
       </td>
     </tr>
   `).join('');
+  if (window.lucide) lucide.createIcons();
 }
 
 function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
@@ -310,21 +336,30 @@ function deselectAll() {
 }
 
 async function deleteRecord(id) {
-  if (!confirm('Padam rekod ini?')) return;
-  try {
-    await api(`records/${id}/`, { method: 'DELETE' });
-    await refreshData();
-    showToast('🗑️ Rekod dipadam.', 'info');
-  } catch (e) {
-    showToast('Ralat memadam rekod.', 'error');
-  }
+  openConfirmModal({
+    title: 'Padam Rekod?',
+    message: 'Adakah anda mahu memadam rekod peserta ini?',
+    subMessage: 'Tindakan ini tidak boleh dibatalkan.',
+    confirmText: 'Padam Rekod',
+    confirmClass: 'btn-danger',
+    icon: 'trash-2',
+    onConfirm: async () => {
+      try {
+        await api(`records/${id}/`, { method: 'DELETE' });
+        await refreshData();
+        showToast('🗑️ Rekod dipadam.', 'info');
+      } catch (e) {
+        showToast('❌ Ralat memadam rekod.', 'error');
+      }
+    }
+  });
 }
 
 // ──────────────────────────────────────────────
 // Participant Edit Modal
 // ──────────────────────────────────────────────
 function openEditModal(id) {
-  const record = window.cachedRecords.find(r => r.id === id);
+  const record = cachedRecords.find(r => r.id === id);
   if (!record) return;
   document.getElementById('edit-id').value = record.id;
   document.getElementById('edit-fullname').value = record.fullname;
@@ -350,7 +385,7 @@ async function saveParticipantEdit() {
   };
 
   try {
-    const res = await api(`/api/attendance/records/${id}/`, {
+    const res = await api(`records/${id}/`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
@@ -358,24 +393,13 @@ async function saveParticipantEdit() {
     if (res.status === 'success') {
       showToast('✅ Maklumat berjaya dikemaskini!', 'success');
       closeEditModal();
-      await fetchRecords(); // refresh table
+      await refreshData(); // refresh table and UI
     } else {
       showToast('Gagal mengemaskini maklumat.', 'error');
     }
   } catch (e) {
     showToast('Ralat pelayan.', 'error');
   }
-}
-
-async function clearAllData() {
-  if (!confirm('AMARAN: Padam SEMUA rekod? Tindakan ini tidak boleh dibatalkan!')) return;
-  try {
-    let ep = 'records/';
-    if (currentProgramId) ep += `?program=${currentProgramId}`;
-    await api(ep, { method: 'DELETE' });
-    await refreshData();
-    showToast('🗑️ Semua rekod dipadam.', 'info');
-  } catch (e) { showToast('❌ Gagal.', 'error'); }
 }
 
 // ═══════════════════════════════════════
@@ -561,6 +585,114 @@ async function generateBulk() {
   const records = cachedRecords.filter(r => ids.includes(r.id));
   await bulkGeneratePDF(records, `sijil_terpilih_${new Date().toISOString().slice(0, 10)}.pdf`);
   deselectAll();
+}
+
+let currentConfirmAction = null;
+let currentPromptAction = null;
+
+function openPromptModal(options) {
+  document.querySelector('#prompt-modal-title span').textContent = options.title || 'Input';
+  const inputEl = document.getElementById('prompt-modal-input');
+  inputEl.value = options.defaultValue || '';
+  inputEl.placeholder = options.placeholder || '';
+  inputEl.readOnly = !!options.readOnly;
+  
+  const btn = document.getElementById('btn-prompt-action');
+  btn.textContent = options.confirmText || 'OK';
+  
+  if (options.readOnly) {
+    btn.textContent = 'Salin / Copy';
+  }
+  
+  currentPromptAction = options.onConfirm;
+  document.getElementById('generic-prompt-modal').style.display = 'flex';
+  inputEl.focus();
+  if (options.readOnly) {
+    inputEl.select();
+  }
+}
+
+function closePromptModal() {
+  currentPromptAction = null;
+  document.getElementById('generic-prompt-modal').style.display = 'none';
+}
+
+function executePromptAction() {
+  const val = document.getElementById('prompt-modal-input').value;
+  if (currentPromptAction) currentPromptAction(val);
+  closePromptModal();
+}
+
+function openConfirmModal(options) {
+  document.getElementById('confirm-modal-title').textContent = options.title || 'Adakah anda pasti?';
+  document.getElementById('confirm-modal-msg').textContent = options.message || '';
+  document.getElementById('confirm-modal-sub').textContent = options.subMessage || '';
+  
+  const btn = document.getElementById('btn-confirm-action');
+  btn.textContent = options.confirmText || 'Teruskan';
+  btn.className = `btn ${options.confirmClass || 'btn-primary'}`;
+  
+  const iconDiv = document.getElementById('confirm-modal-icon');
+  iconDiv.innerHTML = `<i data-lucide="${options.icon || 'alert-circle'}" style="width:48px; height:48px;"></i>`;
+  iconDiv.style.color = options.confirmClass === 'btn-danger' ? 'var(--danger)' : 'var(--primary)';
+  
+  const cancelBtn = document.getElementById('btn-confirm-cancel');
+  if (options.isAlert) {
+    cancelBtn.style.display = 'none';
+  } else {
+    cancelBtn.style.display = 'block';
+  }
+  
+  const card = document.querySelector('#generic-confirm-modal .card');
+  if (options.confirmClass === 'btn-danger') {
+    card.style.borderTop = '4px solid var(--danger)';
+  } else {
+    card.style.borderTop = 'none';
+  }
+  
+  lucide.createIcons();
+  
+  currentConfirmAction = options.onConfirm;
+  document.getElementById('generic-confirm-modal').style.display = 'flex';
+}
+
+function closeConfirmModal() {
+  currentConfirmAction = null;
+  document.getElementById('generic-confirm-modal').style.display = 'none';
+}
+
+function executeConfirmAction() {
+  if (currentConfirmAction) currentConfirmAction();
+  closeConfirmModal();
+}
+
+async function bulkDelete() {
+  const ids = [...document.querySelectorAll('.row-check:checked')].map(c => c.dataset.id);
+  if (!ids.length) return;
+  
+  openConfirmModal({
+    title: 'Adakah anda pasti?',
+    message: `Adakah anda mahu memadam ${ids.length} rekod yang dipilih?`,
+    subMessage: 'Tindakan ini tidak boleh dibatalkan.',
+    confirmText: `Padam ${ids.length} item`,
+    confirmClass: 'btn-danger',
+    icon: 'triangle-alert',
+    onConfirm: async () => {
+      try {
+        const res = await api('records/', { method: 'DELETE', body: { ids } });
+        if (res.status === 'success') {
+          showToast(`✅ ${res.deleted} rekod berjaya dipadam!`, 'success');
+          deselectAll();
+          await refreshData();
+        } else {
+          showToast('❌ Ralat memadam rekod.', 'error');
+        }
+      } catch (err) {
+        console.error('Bulk delete error:', err);
+        showToast('❌ Ralat rangkaian.', 'error');
+      }
+    }
+  });
 }
 
 async function bulkGeneratePDF(records, filename) {

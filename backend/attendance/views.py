@@ -73,8 +73,14 @@ class RecordListView(views.APIView):
         })
 
     def delete(self, request):
-        program_id = request.query_params.get('program')
         qs = AttendanceRecord.objects.all()
+
+        # Check if specific IDs are provided in JSON body
+        ids = request.data.get('ids', [])
+        if ids and isinstance(ids, list):
+            qs = qs.filter(id__in=ids)
+        
+        program_id = request.query_params.get('program')
         if program_id:
             qs = qs.filter(program_id=program_id)
         count, _ = qs.delete()
@@ -350,4 +356,6 @@ def _render_to_pdf(template_src, context_dict=None):
     pdf = pisa.pisaDocument(BytesIO(html.encode('UTF-8')), result)
     if not pdf.err:
         return result.getvalue()
+    
+    print("PDF Generation Error:", pdf.err)
     return None
