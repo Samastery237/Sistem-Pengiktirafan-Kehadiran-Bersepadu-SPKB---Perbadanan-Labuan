@@ -21,7 +21,7 @@ from django.conf import settings
 from django.http import FileResponse
 import os
 
-FRONTEND_DIR = settings.BASE_DIR.parent  # Points to the project root
+FRONTEND_DIR = os.path.join(settings.BASE_DIR.parent, 'frontend')
 
 def serve_frontend(request, filename='index.html'):
     filepath = os.path.join(FRONTEND_DIR, filename)

@@ -1,29 +1,33 @@
 from rest_framework import serializers
-from .models import Program, AttendanceRecord
+from .models import Department, Folder, AttendanceRecord
 
 
 class AttendanceRecordSerializer(serializers.ModelSerializer):
-    program_name = serializers.CharField(write_only=True, allow_blank=True)
+    department_name = serializers.CharField(write_only=True, allow_blank=True)
+    folder_name = serializers.CharField(write_only=True, allow_blank=True)
 
     class Meta:
         model = AttendanceRecord
         fields = [
-            'id', 'ref', 'program_name', 'fullname', 'ic_number',
+            'id', 'ref', 'department_name', 'folder_name', 'fullname', 'ic_number',
             'phone', 'email', 'organization', 'timestamp',
-            'cert_delay', 'certificate_generated', 'program',
+            'cert_delay', 'certificate_generated', 'folder',
         ]
-        read_only_fields = ['id', 'timestamp', 'certificate_generated', 'program', 'cert_delay']
+        read_only_fields = ['id', 'timestamp', 'certificate_generated', 'folder', 'cert_delay']
 
     def create(self, validated_data):
-        program_name = validated_data.pop('program_name', 'General Attendance')
-        if not program_name or program_name.lower() == 'pl':
-            program_name = 'General Attendance'
+        department_name = validated_data.pop('department_name', 'General Department')
+        folder_name = validated_data.pop('folder_name', 'General Folder')
+        
+        if not department_name: department_name = 'General Department'
+        if not folder_name: folder_name = 'General Folder'
 
-        program, _ = Program.objects.get_or_create(name=program_name)
-        validated_data['program'] = program
+        department, _ = Department.objects.get_or_create(name=department_name)
+        folder, _ = Folder.objects.get_or_create(department=department, name=folder_name)
+        
+        validated_data['folder'] = folder
 
-        # Inherit the cert_delay from the Program (set by admin)
-        # This ensures all devices see the same countdown timer
-        validated_data['cert_delay'] = program.cert_delay
+        # Inherit the cert_delay from the Folder (set by admin)
+        validated_data['cert_delay'] = folder.cert_delay
 
         return super().create(validated_data)

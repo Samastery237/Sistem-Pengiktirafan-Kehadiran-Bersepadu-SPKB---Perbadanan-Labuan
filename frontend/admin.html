@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Panel Admin | Perbadanan Labuan</title>
+  <link rel="icon" type="image/png" href="data:image/png;base64,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" />
+  <meta name="description" content="Panel pentadbiran untuk pengurusan kehadiran dan penjanaan sijil." />
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    #login-overlay {
+      position: fixed; inset: 0; z-index: 50;
+      background: var(--bg);
+      display: none; align-items: center; justify-content: center; padding: 1rem;
+    }
+    .login-card {
+      max-width: 380px; width: 100%;
+      background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 2.5rem;
+      backdrop-filter: blur(20px); text-align: center;
+    }
+    .login-icon { font-size: 3rem; margin-bottom: 1rem; }
+    .login-card h2 { font-family: 'Playfair Display', serif; font-size: 1.5rem; margin-bottom: 0.3rem; }
+    .login-card p { color: var(--text-muted); font-size: 0.875rem; margin-bottom: 1.5rem; }
+    #admin-app { display: none; flex-direction: column; min-height: calc(100vh - 65px); }
+    #admin-app.visible { display: flex; }
+    .toolbar {
+      display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;
+      padding: 1rem 2rem; background: rgba(10,22,40,0.5); border-bottom: 1px solid var(--border);
+    }
+    .ic-masked { letter-spacing: 0.05em; }
+    @media(max-width:800px){#cert-grid{grid-template-columns:1fr!important;}}
+  </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <div class="bg-gradient"></div>
+
+  <!-- Login Overlay -->
+  <div id="login-overlay">
+    <div class="login-card fade-in">
+      <i data-lucide="circle-user-round" class="login-icon"></i>
+      <p style="font-size:0.9rem; color: var(--text-muted); margin-bottom: 1.5rem;">Enter your credentials to access the admin panel.</p>
+      <form onsubmit="event.preventDefault(); doLogin();">
+        <div class="form-group" style="text-align:left; margin-bottom:1rem;">
+        <label class="form-label" for="admin-username">Pengguna / Username</label>
+        <input type="text" id="admin-username" class="form-input" placeholder="Sila masukkan ID Pengguna" onkeydown="if(event.key==='Enter') document.getElementById('admin-password').focus()" />
+      </div>
+      <div class="form-group" style="text-align:left; margin-bottom:1rem;">
+        <label class="form-label" for="admin-password">Kata Laluan / Password</label>
+        <div style="position: relative;">
+          <input type="password" id="admin-password" class="form-input" placeholder="••••••••" onkeydown="if(event.key==='Enter') doLogin()" style="padding-right: 2.5rem;" />
+          <button type="button" onclick="togglePasswordVisibility('admin-password')" style="position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 0.2rem; display: flex; align-items: center; justify-content: center;">
+            <i data-lucide="eye" id="admin-password-eye"></i>
+            <i data-lucide="eye-off" id="admin-password-eye-off" style="display: none;"></i>
+          </button>
+        </div>
+        <div class="form-error" id="login-error">Kata laluan salah.</div>
+      </div>
+        <button type="submit" class="btn btn-accent btn-full" id="login-btn"><i data-lucide="unlock"></i> Log Masuk / Login</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <a href="index.html" class="navbar-brand">
+      <img src="https://www.cstcl.com.my/wp-content/uploads/2018/12/Logo-Perbadanan-Labuan.png" alt="Logo Perbadanan Labuan" class="navbar-logo-img">
+      <div class="navbar-title">
+        <span>Perbadanan Labuan</span>
+        <strong style="font-size: 1.15rem; letter-spacing: 0.02em;">SPKB - Panel Admin</strong>
+      </div>
+    </a>
+    <div class="navbar-links" style="display: flex; gap: 0.5rem; align-items: center;">
+      <button class="btn btn-ghost btn-sm" onclick="openChangePasswordModal()" id="btn-open-cp" style="display:none;" aria-label="Tukar Kata Laluan">
+        <i data-lucide="key"></i>
+        Tukar Kata Laluan
+      </button>
+      <button class="btn btn-ghost btn-sm" onclick="confirmLogout()" id="logout-btn" style="display:none;" aria-label="Log Keluar">
+        <i data-lucide="log-out"></i>
+        Log Keluar
+      </button>
+    </div>
+  </nav>
+
+  <!-- Admin App -->
+  <div id="admin-app">
+
+    <!-- Department & Folder Toolbar -->
+    <div class="toolbar" style="background: rgba(37,99,168,0.15); border-bottom: 1px solid rgba(37,99,168,0.3); padding: 0.75rem 2rem; display:flex; flex-wrap:wrap; gap:1rem; align-items:center;">
+      <div style="display:flex; align-items:center; gap:0.5rem;">
+        <strong style="color:var(--text); font-size: 0.9rem;"><i data-lucide="building"></i> Jabatan:</strong>
+        <select id="department-selector" class="form-input" style="width: auto; padding: 0.3rem 2rem 0.3rem 1rem; min-width: 150px; height: 36px; margin: 0;" onchange="changeDepartment(this.value)">
+          <option value="">Semua Jabatan</option>
+        </select>
+        <button class="btn btn-primary btn-sm" style="height: 36px;" onclick="createNewDepartment()">Tambah Jabatan</button>
+      </div>
+
+      <div style="display:flex; align-items:center; gap:0.5rem; border-left: 1px solid rgba(255,255,255,0.1); padding-left: 1rem;">
+        <strong style="color:var(--text); font-size: 0.9rem;"><i data-lucide="folder"></i> Folder:</strong>
+        <select id="folder-selector" class="form-input" style="width: auto; padding: 0.3rem 2rem 0.3rem 1rem; min-width: 150px; height: 36px; margin: 0;" onchange="changeFolder(this.value)" disabled>
+          <option value="">-- Pilih Jabatan Dahulu --</option>
+        </select>
+        <button class="btn btn-primary btn-sm" style="height: 36px;" id="btn-add-folder" onclick="createNewFolder()" disabled>Tambah Folder</button>
+        <button class="btn btn-info btn-sm" style="height: 36px;" id="btn-link-folder" onclick="showShareableLink()" disabled><i data-lucide="link"></i> Link</button>
+        <button class="btn btn-danger btn-sm" style="height: 36px;" id="btn-del-folder" onclick="deleteCurrentFolder()" disabled> Padam</button>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" id="tab-attendance-btn" onclick="switchTab('attendance')"> Kehadiran</button>
+      <button class="tab-btn" id="tab-certificate-btn" onclick="switchTab('certificate')"> Sijil</button>
+      <button class="tab-btn" id="tab-settings-btn" onclick="switchTab('settings')"> Tetapan</button>
+    </div>
+
+    <!-- ═══ TAB: ATTENDANCE ═══ -->
+    <div class="tab-panel active" id="tab-attendance">
+      <div class="section">
+        <!-- Stats -->
+        <div class="stats-grid" id="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-blue"><i data-lucide="users"></i></div>
+            <div>
+              <div class="stat-value" id="stat-total">0</div>
+              <div class="stat-label">Jumlah Peserta / Total</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-green"><i data-lucide="check-circle-2"></i></div>
+            <div>
+              <div class="stat-value" id="stat-today">0</div>
+              <div class="stat-label">Hari Ini / Today</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon stat-icon-gold"><i data-lucide="file-text"></i></div>
+            <div>
+              <div class="stat-value" id="stat-certs">0</div>
+              <div class="stat-label">Sijil Dijana / Certs Generated</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Toolbar -->
+        <div class="section-header">
+          <div>
+            <div class="section-title">Senarai Kehadiran</div>
+            <div class="section-sub">Semua rekod kehadiran yang telah didaftarkan</div>
+          </div>
+          <div style="display:flex; gap:0.75rem; flex-wrap:wrap; align-items:center;">
+            <div class="search-bar" style="min-width:220px;">
+              <span class="search-icon"><i data-lucide="search"></i></span>
+              <input type="text" id="search-input" placeholder="Cari nama / IC..." oninput="filterTable()" />
+            </div>
+            <button class="btn btn-ghost btn-sm" onclick="exportCSV()" id="btn-export"><i data-lucide="download"></i> Export CSV</button>
+          </div>
+        </div>
+
+        <!-- Bulk bar -->
+        <div class="bulk-bar" id="bulk-bar">
+          <span class="bulk-count" id="bulk-count">0 dipilih</span>
+          <button class="btn btn-accent btn-sm" onclick="generateBulk()" id="btn-bulk-cert"><i data-lucide="award"></i> Jana Sijil Terpilih</button>
+          <button class="btn btn-danger btn-sm" onclick="bulkDelete()" id="btn-bulk-delete"><i data-lucide="trash-2"></i> Padam Terpilih</button>
+          <button class="btn btn-ghost btn-sm" onclick="deselectAll()"><i data-lucide="x"></i> Nyahpilih</button>
+        </div>
+
+        <!-- Table -->
+        <div class="table-wrap">
+          <table id="attendance-table">
+            <thead>
+              <tr>
+                <th><input type="checkbox" id="check-all" onchange="toggleAll(this)" title="Pilih semua" /></th>
+                <th>#</th>
+                <th>Nama / Name</th>
+                <th>No. IC</th>
+                <th>No. Telefon</th>
+                <th>E-mel</th>
+                <th>Organisasi</th>
+                <th>Lokasi Folder</th>
+                <th>Tarikh / Date</th>
+                <th>Tindakan / Actions</th>
+              </tr>
+            </thead>
+            <tbody id="attendance-tbody"></tbody>
+          </table>
+          <div class="empty-state" id="empty-state" style="display:none;">
+            <div class="empty-icon"><i data-lucide="mail"></i></div>
+            <h3>Tiada Rekod Kehadiran</h3>
+            <p>Belum ada peserta yang mendaftar kehadiran.<br>No attendance records yet.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ TAB: CERTIFICATE ═══ -->
+    <div class="tab-panel" id="tab-certificate">
+      <div class="section">
+        <div class="section-header">
+          <div>
+            <div class="section-title">Jana Sijil / Generate Certificate</div>
+            <div class="section-sub">Pratonton dan jana sijil peserta</div>
+          </div>
+          <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+            <button class="btn btn-ghost btn-sm" onclick="switchTab('settings')"><i data-lucide="settings"></i> Tetapan Sijil</button>
+            <button class="btn btn-success" onclick="generateAllCerts()" id="btn-gen-all"><i class="fa-solid fa-file-lines"></i> Jana Semua Sijil</button>
+          </div>
+        </div>
+        <div style="display:grid; grid-template-columns: 320px 1fr; gap:1.5rem; align-items:start;" id="cert-grid">
+          <div class="card" id="cert-list-card">
+            <div class="search-bar" style="margin-bottom:1rem;">
+              <span class="search-icon"><i data-lucide="search"></i></span>
+              <input type="text" id="cert-search" placeholder="Cari peserta..." oninput="filterCertList()" />
+            </div>
+            <div id="cert-participant-list" style="display:flex; flex-direction:column; gap:0.4rem; max-height:400px; overflow-y:auto;"></div>
+          </div>
+          <div class="card" style="text-align:center;">
+            <h4 style="margin-bottom:1rem; font-size:0.9rem; color:var(--text-muted);">PRATONTON SIJIL / CERTIFICATE PREVIEW</h4>
+            <div id="cert-preview-area">
+              <div class="empty-state" id="cert-empty" style="padding:2rem;">
+                <div class="empty-icon"><i data-lucide="file-text"></i></div>
+                <h3>Pilih Peserta</h3>
+                <p>Pilih peserta dari senarai untuk pratonton sijil.</p>
+              </div>
+              <canvas id="cert-canvas" class="cert-canvas" style="display:none; max-width:100%; border-radius:var(--radius-sm);"></canvas>
+            </div>
+            <div id="cert-actions" style="margin-top:1rem; display:none;">
+              <div style="display:flex; gap:0.75rem; justify-content:center; flex-wrap:wrap;">
+                <button class="btn btn-primary" onclick="downloadCertPDF()" id="btn-dl-pdf"><i data-lucide="file-pdf"></i> Muat Turun PDF</button>
+                <button class="btn btn-ghost" onclick="downloadCertPNG()" id="btn-dl-png"><i data-lucide="image"></i> Muat Turun PNG</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ TAB: SETTINGS ═══ -->
+    <div class="tab-panel" id="tab-settings">
+      <div class="section">
+        <div class="section-title" style="margin-bottom:1.5rem;"><i data-lucide="settings"></i> Tetapan Sistem / System Settings</div>
+        <div class="settings-grid">
+
+          <!-- Certificate Template Upload -->
+          <div class="card">
+            <h3 style="font-size:1rem; margin-bottom:1rem;"><i data-lucide="image"></i> Templat Sijil / Certificate Template</h3>
+            <div class="upload-zone" id="upload-zone">
+              <input type="file" id="template-upload" accept="image/*" onchange="handleTemplateUpload(event)" />
+              <div class="upload-icon" style="display: flex; justify-content: center; margin-bottom: 1rem; color: var(--primary-light);"><i data-lucide="upload" style="width: 48px; height: 48px;"></i></div>
+              <h4>Muat Naik Templat</h4>
+              <p>Drag & drop atau klik untuk pilih fail PNG/JPG</p>
+            </div>
+            <img id="template-preview-img" class="template-preview" alt="Certificate template preview" />
+            <div style="margin-top:1rem; display:flex; gap:0.5rem; flex-wrap:wrap;">
+              <button class="btn btn-ghost btn-sm" onclick="clearTemplate()" id="btn-clear-template"><i data-lucide="trash-2"></i> Padam Templat</button>
+            </div>
+          </div>
+
+          <!-- Text Position Settings -->
+          <div class="card">
+            <h3 style="font-size:1rem; margin-bottom:1rem;"><i data-lucide="type"></i> Kedudukan Teks / Text Position</h3>
+            <p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:1rem;">Laraskan kedudukan nama dan No. IC pada sijil.</p>
+            <div style="margin-bottom:1rem;">
+              <label class="form-label" style="margin-bottom:0.5rem;"><i data-lucide="user"></i> Nama / Name</label>
+              <div class="pos-grid">
+                <div>
+                  <label class="form-label" for="name-x" style="font-size:0.72rem;">X (piksel)</label>
+                  <input type="number" id="name-x" class="form-input" value="500" min="0" onchange="saveSettings()" />
+                </div>
+                <div>
+                  <label class="form-label" for="name-y" style="font-size:0.72rem;">Y (piksel)</label>
+                  <input type="number" id="name-y" class="form-input" value="360" min="0" onchange="saveSettings()" />
+                </div>
+              </div>
+              <label class="form-label" style="font-size:0.72rem; margin-top:0.5rem;">Saiz Fon / Font Size</label>
+              <input type="number" id="name-size" class="form-input" value="42" min="10" max="120" onchange="saveSettings()" />
+            </div>
+            <div style="margin-bottom:1rem;">
+              <label class="form-label" style="margin-bottom:0.5rem;"><i data-lucide="id-card"></i> No. IC</label>
+              <div class="form-group" style="display:flex; align-items:center; gap:0.75rem; margin-bottom:0.5rem;">
+                <input type="checkbox" id="show-ic-on-cert" onchange="saveSettings()" style="accent-color:var(--primary-light); width:16px; height:16px;" />
+                <label for="show-ic-on-cert" style="font-size:0.85rem; color:var(--text-muted);">Tunjuk IC pada sijil</label>
+              </div>
+              <div id="ic-pos-fields">
+                <div class="pos-grid">
+                  <div>
+                    <label class="form-label" for="ic-x" style="font-size:0.72rem;">X (piksel)</label>
+                    <input type="number" id="ic-x" class="form-input" value="500" min="0" onchange="saveSettings()" />
+                  </div>
+                  <div>
+                    <label class="form-label" for="ic-y" style="font-size:0.72rem;">Y (piksel)</label>
+                    <input type="number" id="ic-y" class="form-input" value="420" min="0" onchange="saveSettings()" />
+                  </div>
+                </div>
+                <label class="form-label" style="font-size:0.72rem; margin-top:0.5rem;">Saiz Fon IC</label>
+                <input type="number" id="ic-size" class="form-input" value="28" min="10" max="80" onchange="saveSettings()" />
+              </div>
+            </div>
+            <div>
+              <label class="form-label" style="margin-bottom:0.5rem;"><i data-lucide="palette"></i> Warna Teks / Text Color</label>
+              <div class="color-row">
+                <input type="color" id="text-color" value="#1a1a2e" onchange="saveSettings()" />
+                <span style="font-size:0.82rem; color:var(--text-muted);">Warna nama &amp; IC pada sijil</span>
+              </div>
+            </div>
+            <div style="margin-top:1rem;">
+              <label class="form-label" style="font-size:0.72rem; margin-bottom:0.5rem;">Jenis Fon / Font Family</label>
+              <select id="font-family" class="form-input" onchange="saveSettings()" style="cursor:pointer;">
+                <option value="Georgia, serif">Georgia (Serif)</option>
+                <option value="'Times New Roman', serif">Times New Roman</option>
+                <option value="Arial, sans-serif">Arial (Sans-serif)</option>
+                <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
+                <option value="Palatino, serif" selected>Palatino (Elegant)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Event Settings (Now just Delay) -->
+          <div class="card">
+            <h3 style="font-size:1rem; margin-bottom:1rem;"><i data-lucide="clock"></i> Tetapan Masa / Time Settings</h3>
+            <div class="form-group">
+              <label class="form-label">Lengah Masa Sijil / Certificate Delay</label>
+              <div style="display: flex; gap: 1rem; align-items: center;">
+                <div style="flex: 1;">
+                  <label class="form-label" for="cert-delay-hours" style="font-size:0.72rem; margin-bottom:0.3rem;">Jam / Hours</label>
+                  <input type="number" id="cert-delay-hours" class="form-input" value="0" min="0" onchange="saveSettings()" />
+                </div>
+                <div style="flex: 1;">
+                  <label class="form-label" for="cert-delay-minutes" style="font-size:0.72rem; margin-bottom:0.3rem;">Minit / Minutes</label>
+                  <input type="number" id="cert-delay-minutes" class="form-input" value="0" min="0" max="59" onchange="saveSettings()" />
+                </div>
+              </div>
+              <div style="font-size:0.75rem; color:var(--text-muted); margin-top:0.5rem;">Tetapkan '0' untuk kedua-duanya bagi memberikan sijil secara serta-merta.</div>
+            </div>
+          </div>
+
+          <!-- Security section removed and moved to modal -->
+
+        </div>
+
+        <div style="margin-top:1.5rem; display:flex; justify-content:flex-end;">
+          <button class="btn btn-accent" onclick="saveSettings(); showToast('<i class=\'fa-solid fa-circle-check\'></i> Tetapan disimpan!', 'success')">
+            <i class="fa-solid fa-floppy-disk"></i> Simpan Semua Tetapan
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end admin-app -->
+
+  <footer style="width: 100%; margin-top: auto; background: rgba(255, 255, 255, 0.02); border-top: 1px solid rgba(255, 255, 255, 0.05); padding: 1rem 5%; backdrop-filter: blur(10px);">
+    <div style="max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; color: rgba(255,255,255,0.4); flex-wrap: wrap; gap: 0.5rem;">
+      <div>© 2026 Hak Cipta Terpelihara Perbadanan Labuan</div>
+      <a href="index.html" style="color: inherit; text-decoration: none; transition: color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,0.4)'">Laman Utama SPKB</a>
+    </div>
+  </footer>
+
+  <!-- Generic Confirm Modal -->
+  <div id="generic-confirm-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:9999; align-items:center; justify-content:center; backdrop-filter:blur(4px);">
+    <div class="card" style="width:100%; max-width:400px; background:var(--bg-card); padding:2rem; border-radius:16px; text-align:center;">
+      <div id="confirm-modal-icon" style="display:flex; justify-content:center; margin-bottom:1rem;">
+      </div>
+      <h3 id="confirm-modal-title" style="margin-bottom:0.5rem; font-size:1.4rem;"></h3>
+      <p id="confirm-modal-msg" style="color:rgba(255,255,255,0.7); margin-bottom:0.5rem;"></p>
+      <p id="confirm-modal-sub" style="color:rgba(255,255,255,0.5); margin-bottom:2rem; font-size:0.85rem;"></p>
+      <div style="display:flex; justify-content:center; gap:0.8rem; margin-top:1.5rem;">
+        <button type="button" id="btn-confirm-cancel" class="btn btn-ghost" onclick="closeConfirmModal()" style="flex:1; justify-content:center;">Batal</button>
+        <button type="button" id="btn-confirm-action" onclick="executeConfirmAction()" style="flex:1; justify-content:center;"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Generic Prompt Modal -->
+  <div id="generic-prompt-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:9999; align-items:center; justify-content:center; backdrop-filter:blur(4px);">
+    <div class="card" style="width:100%; max-width:400px; background:var(--bg-card); padding:2rem; border-radius:16px;">
+      <h3 id="prompt-modal-title" style="margin-bottom:1rem; font-size:1.2rem; display:flex; align-items:center; gap:0.5rem;"><i data-lucide="edit-3"></i> <span>Input</span></h3>
+      <div class="form-group" style="margin-bottom:1.5rem;">
+        <input type="text" id="prompt-modal-input" class="form-input" />
+      </div>
+      <div style="display:flex; justify-content:center; gap:0.8rem;">
+        <button type="button" class="btn btn-ghost" onclick="closePromptModal()" style="flex:1; justify-content:center;">Batal</button>
+        <button type="button" id="btn-prompt-action" class="btn btn-primary" onclick="executePromptAction()" style="flex:1; justify-content:center;">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Participant Modal -->
+  <div id="edit-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:9999; align-items:center; justify-content:center; backdrop-filter:blur(4px);">
+    <div class="card" style="width:100%; max-width:450px; background:var(--bg-card); padding:2rem; border-radius:16px;">
+      <form onsubmit="event.preventDefault(); saveParticipantEdit();">
+      <h3 style="margin-bottom:1rem; font-size:1.2rem; display:flex; align-items:center; gap:0.5rem;"><i data-lucide="user-pen"></i> Kemaskini Peserta</h3>
+      <input type="hidden" id="edit-id" />
+      <div class="form-group">
+        <label class="form-label" for="edit-fullname">Nama Penuh</label>
+        <input type="text" id="edit-fullname" class="form-input" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="edit-ic">No. IC</label>
+        <input type="text" id="edit-ic" class="form-input" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="edit-phone">No. Telefon</label>
+        <input type="text" id="edit-phone" class="form-input" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="edit-email">E-mel</label>
+        <input type="email" id="edit-email" class="form-input" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="edit-org">Organisasi / Jabatan</label>
+        <input type="text" id="edit-org" class="form-input" list="org-options" />
+        <datalist id="org-options">
+          <option value="Pejabat Pengerusi"></option>
+          <option value="Pejabat Ketua Pegawai Eksekutif"></option>
+          <option value="Pejabat Timbalan Ketua Pegawai Eksekutif"></option>
+          <option value="Pejabat Penasihat Undang-Undang"></option>
+          <option value="Jabatan Audit Dalam"></option>
+          <option value="Jabatan Hal Ehwal Korporat"></option>
+          <option value="Unit Dasar dan Integriti"></option>
+          <option value="Jabatan Khidmat Pengurusan"></option>
+          <option value="Pusat Transformasi Bandar (UTC)"></option>
+          <option value="Jabatan Pengurusan Sumber Manusia"></option>
+          <option value="Unit Perkhidmatan JPSM"></option>
+          <option value="Unit Latihan JPSM"></option>
+          <option value="Jabatan Kewangan"></option>
+          <option value="Jabatan Digital Dan Informasi"></option>
+          <option value="Perpustakaan Awam Labuan"></option>
+          <option value="Jabatan Pembangunan & Kejuruteraan"></option>
+          <option value="Jabatan Perancangan & Kawalan Bangunan"></option>
+          <option value="Jabatan Sosio Ekonomi"></option>
+          <option value="Jabatan Pelancongan, Kebudayaan, dan Kesenian"></option>
+          <option value="Majlis Sukan Labuan"></option>
+          <option value="Unit Penyelarasan, Pemantauan dan Penilaian Impak"></option>
+          <option value="Jabatan Penilaian dan pengurusan Harta"></option>
+          <option value="Jabatan Perkhidmatan Perbandaran"></option>
+          <option value="Jabatan Penguatkuasaan"></option>
+          <option value="Jabatan Pelesenan"></option>
+          <option value="Unit Pelaburan PL"></option>
+          <option value="Agensi Kerajaan Lain"></option>
+          <option value="Sektor Swasta / NGO"></option>
+          <option value="Orang Awam"></option>
+          <option value="Lain-Lain"></option>
+        </datalist>
+      </div>
+      <div style="display:flex; justify-content:center; gap:0.8rem; margin-top:1.5rem;">
+        <button type="button" class="btn btn-ghost" onclick="closeEditModal()">Batal</button>
+        <button type="submit" class="btn btn-primary"><i data-lucide="save"></i> Simpan</button>
+      </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Change Password Modal -->
+  <div id="change-password-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:9999; align-items:center; justify-content:center; backdrop-filter:blur(4px);">
+    <div class="card" style="width:100%; max-width:400px; background:var(--bg-card); padding:2rem; border-radius:16px;">
+      <h3 style="margin-bottom:1rem; font-size:1.2rem; display:flex; align-items:center; gap:0.5rem;"><i data-lucide="key"></i> Tukar Kata Laluan</h3>
+      <div class="form-group" style="margin-bottom:1rem;">
+        <label class="form-label" for="modal-new-password">Kata Laluan Baharu</label>
+        <div style="position: relative;">
+          <input type="password" id="modal-new-password" class="form-input" placeholder="Min 6 aksara..." style="padding-right: 2.5rem;" />
+          <button type="button" onclick="togglePasswordVisibility('modal-new-password')" style="position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 0.2rem; display: flex; align-items: center; justify-content: center;">
+            <i data-lucide="eye" id="modal-new-password-eye"></i>
+            <i data-lucide="eye-off" id="modal-new-password-eye-off" style="display: none;"></i>
+          </button>
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:1.5rem;">
+        <label class="form-label" for="modal-confirm-password">Sahkan Kata Laluan</label>
+        <div style="position: relative;">
+          <input type="password" id="modal-confirm-password" class="form-input" placeholder="Ulang kata laluan..." style="padding-right: 2.5rem;" />
+          <button type="button" onclick="togglePasswordVisibility('modal-confirm-password')" style="position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 0.2rem; display: flex; align-items: center; justify-content: center;">
+            <i data-lucide="eye" id="modal-confirm-password-eye"></i>
+            <i data-lucide="eye-off" id="modal-confirm-password-eye-off" style="display: none;"></i>
+          </button>
+        </div>
+      </div>
+      <div id="modal-pw-status" style="margin-bottom:1rem; font-size:0.85rem; display:none;"></div>
+      <div style="display:flex; justify-content:center; gap:0.8rem;">
+        <button type="button" class="btn btn-ghost" onclick="closeChangePasswordModal()" style="flex:1; justify-content:center;">Batal</button>
+        <button type="button" class="btn btn-primary" onclick="submitChangePassword()" style="flex:1; justify-content:center;">Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast" role="alert"></div>
+
+  <script src="js/admin.js?v=7"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script>
+    lucide.createIcons();
+  </script>
+</body>
+</html>

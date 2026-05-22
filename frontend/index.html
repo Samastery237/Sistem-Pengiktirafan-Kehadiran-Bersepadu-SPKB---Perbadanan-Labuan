@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SPKB | Perbadanan Labuan</title>
+  <link rel="icon" type="image/png" href="data:image/png;base64,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" />
+  <meta name="description" content="Sistem pengurusan kehadiran dan penjanaan sijil automatik untuk program-program Perbadanan Labuan." />
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1.25rem;
+      max-width: 1000px;
+      margin: 0 auto 4rem;
+      padding: 0 2rem;
+    }
+    .feature-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.75rem;
+      backdrop-filter: blur(12px);
+      transition: var(--transition);
+    }
+    .feature-card:hover {
+      border-color: var(--border-accent);
+      transform: translateY(-4px);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+    }
+    .feature-icon {
+      width: 52px; height: 52px; border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5rem; margin-bottom: 1rem;
+    }
+    .feature-icon-blue { background: rgba(37,99,168,0.2); }
+    .feature-icon-gold { background: rgba(200,150,62,0.2); }
+    .feature-icon-green { background: rgba(22,163,74,0.2); }
+    .feature-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 0.4rem; }
+    .feature-card p { font-size: 0.85rem; color: var(--text-muted); line-height: 1.6; }
+    .hero-btns { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+    .section-label {
+      text-align: center; font-size: 0.78rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.1em;
+      color: var(--text-muted); margin-bottom: 1rem;
+    }
+    .steps-wrap {
+      display: flex; justify-content: center; gap: 0; flex-wrap: wrap;
+      max-width: 900px; margin: 0 auto 4rem; padding: 0 2rem; position: relative;
+    }
+    .step {
+      display: flex; flex-direction: column; align-items: center;
+      text-align: center; flex: 1; min-width: 150px; padding: 0 1rem; position: relative;
+    }
+    .step::after {
+      content: '→'; position: absolute; right: -0.5rem; top: 1.1rem;
+      color: var(--accent); font-size: 1.2rem;
+    }
+    .step:last-child::after { display: none; }
+    .step-num {
+      width: 44px; height: 44px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary-light), var(--accent));
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 1rem; margin-bottom: 0.75rem;
+      box-shadow: 0 4px 16px rgba(37,99,168,0.4);
+    }
+    .step h4 { font-size: 0.9rem; font-weight: 600; margin-bottom: 0.3rem; }
+    .step p { font-size: 0.78rem; color: var(--text-muted); }
+    @media (min-width: 900px) {
+      .hero-intro { text-align: left !important; }
+      .hero-intro h1 { text-align: left !important; }
+      .hero-intro p { text-align: left !important; margin: 0 0 2rem 0 !important; }
+      .hero-intro .hero-btns { justify-content: flex-start !important; }
+    }
+    /* Lucide Icon Alignment */
+    [data-lucide], svg.lucide {
+      display: inline-block;
+      vertical-align: middle;
+      width: 1em;
+      height: 1em;
+      stroke-width: 1.75;
+      flex-shrink: 0;
+    }
+    .btn [data-lucide], .btn svg.lucide {
+      width: 16px;
+      height: 16px;
+      margin-right: 0.35rem;
+      position: relative;
+      top: -0.5px;
+    }
+  </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <div class="bg-gradient"></div>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <a href="index.html" class="navbar-brand">
+      <img src="https://www.cstcl.com.my/wp-content/uploads/2018/12/Logo-Perbadanan-Labuan.png" alt="Logo Perbadanan Labuan" class="navbar-logo-img">
+      <div class="navbar-title">
+        <span>Perbadanan Labuan</span>
+        <strong style="font-size: 1.15rem; letter-spacing: 0.02em;">Sistem Pengiktirafan Kehadiran Bersepadu (SPKB)</strong>
+      </div>
+    </a>
+    <div class="navbar-links">
+      <a href="index.html" class="active">Laman Utama</a>
+      <a href="form.html">Daftar Kehadiran</a>
+    </div>
+  </nav>
+
+  <!-- Split Layout Wrapper -->
+  <div style="max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 2rem; padding: 5rem 2rem 4rem; flex-wrap: wrap;">
+    
+    <!-- Left Column: Hero Intro -->
+    <div class="hero fade-in hero-intro" style="flex: 1.2; min-width: 320px; padding: 0;">
+      <h1 style="font-size: clamp(2rem, 4.5vw, 3.5rem);">Sistem Pengiktirafan Kehadiran<br>Bersepadu (SPKB)</h1>
+      <p style="margin-bottom: 2rem; font-size: 1.1rem; max-width: 580px;">Daftar kehadiran anda dengan mudah dan dapatkan sijil penyertaan yang dijana secara automatik, tanpa kertas dan tanpa kelewatan.</p>
+      <div class="hero-btns">
+        <a href="form.html" class="btn btn-accent btn-lg" id="cta-register"><i data-lucide="clipboard-list"></i> Daftar Kehadiran</a>
+      </div>
+    </div>
+
+    <!-- Right Column: Certificate Status Check -->
+    <div class="form-container fade-in-delay-1" style="flex: 1; max-width: 450px; min-width: 320px; margin: 0 auto; padding: 0;">
+      <div class="card" style="text-align: center; border-color: rgba(22,163,74,0.3); box-shadow: 0 10px 40px rgba(0,0,0,0.2); padding: 2.5rem 1.5rem; background: rgba(255,255,255,0.03);">
+        <h3 style="font-size:1.15rem; color:var(--text); margin-bottom:0.5rem;">Semak Status Sijil</h3>
+        <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1.5rem;">Masukkan No. Kad Pengenalan anda untuk muat turun sijil selepas program</p>
+        <div style="display:flex; gap:0.5rem; justify-content:center; align-items:stretch; margin-bottom: 1rem; flex-wrap: wrap;">
+          <input type="text" id="check-ic" class="form-input" placeholder="No. IC (Cth: 900101123456)" style="max-width: 250px; flex: 1;" onkeydown="if(event.key==='Enter') checkCertStatus()" />
+          <button class="btn btn-primary" onclick="checkCertStatus()" id="btn-check"><i data-lucide="search"></i> Semak</button>
+        </div>
+        <div id="check-result" style="display:none; padding: 1.25rem; border-radius: var(--radius-sm); background: rgba(0,0,0,0.2); border: 1px solid var(--border); font-size: 0.85rem;">
+        </div>
+      </div>
+    </div>
+    
+  </div>
+
+  <!-- How it works -->
+  <div class="section-label fade-in-delay-1">Cara Penggunaan / How It Works</div>
+  <div class="steps-wrap fade-in-delay-1">
+    <div class="step">
+      <div class="step-num">1</div>
+      <h4>Isi Borang</h4>
+      <p>Masukkan maklumat anda / Enter your details</p>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <h4>Hantar</h4>
+      <p>Sahkan kehadiran / Submit attendance</p>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <h4>Selesai</h4>
+      <p>Terima sijil penyertaan / Receive certificate</p>
+    </div>
+  </div>
+
+  <footer style="width: 100%; margin-top: auto; background: rgba(255, 255, 255, 0.02); border-top: 1px solid rgba(255, 255, 255, 0.05); padding: 2.5rem 5% 1rem; backdrop-filter: blur(10px);">
+    <div style="max-width: 1200px; margin: 0 auto;">
+      <div class="footer-row" style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2rem; align-items: flex-start; text-align: left;">
+        <!-- Location -->
+        <div class="footer-col" style="width: 260px;">
+          <h4 style="color: var(--primary-light); font-size: 1.1rem; margin-bottom: 1.2rem; text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 0.5rem; margin-top: 0;">
+            <i data-lucide="map-pin"></i>
+            Lokasi Kami
+          </h4>
+          <div style="color: rgba(255,255,255,0.7); font-size: 1rem; line-height: 1.7;">
+            <strong style="color: #fff;">Perbadanan Labuan</strong><br>
+            Wisma Perbadanan Labuan,<br>
+            Peti Surat 81245,<br>87022 WP Labuan
+          </div>
+        </div>
+        <!-- Map -->
+        <div class="footer-col" style="width: 450px; max-width: 100%;">
+          <div style="width: 100%; height: 220px; border-radius: 12px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 12px rgba(0,0,0,0.2);">
+            <iframe width="100%" height="100%" frameborder="0" scrolling="no" marginheight="0" marginwidth="0" src="https://maps.google.com/maps?q=Wisma%20Perbadanan%20Labuan&t=&z=16&ie=UTF8&iwloc=&output=embed" style="filter: contrast(1.1);"></iframe>
+          </div>
+        </div>
+        <!-- Contact -->
+        <div class="footer-col" style="width: 320px;">
+          <h4 style="color: var(--primary-light); font-size: 1.1rem; margin-bottom: 1.2rem; text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 0.5rem; margin-top: 0;">
+            <i data-lucide="headset"></i>
+            Hubungi Kami
+          </h4>
+          <div style="display: flex; flex-direction: column; gap: 0.85rem; color: rgba(255,255,255,0.7); font-size: 1rem;">
+            <div class="footer-contact-item" style="display: flex; gap: 0.75rem; align-items: flex-start;">
+              <i data-lucide="phone" style="width:20px;height:20px;flex-shrink:0;opacity:0.8;margin-top:2px;"></i> <span style="line-height: 1.4;">087-408600 / 087-408738<br><span style="opacity:0.6; font-size:0.85rem;">(Khidmat Pelanggan)</span></span>
+            </div>
+            <div class="footer-contact-item" style="display: flex; gap: 0.75rem; align-items: flex-start;">
+              <i data-lucide="printer" style="width:20px;height:20px;flex-shrink:0;opacity:0.8;margin-top:2px;"></i> <span style="line-height: 1.4;">087-428997<br><span style="opacity:0.6; font-size:0.85rem;">(Faks)</span></span>
+            </div>
+            <div class="footer-contact-item" style="display: flex; gap: 0.75rem; align-items: flex-start;">
+              <i data-lucide="clock" style="width:20px;height:20px;flex-shrink:0;opacity:0.8;margin-top:2px;"></i> <span style="line-height: 1.4;">8.00 Pagi - 5.00 Petang<br><span style="opacity:0.6; font-size:0.85rem;">(Isnin - Jumaat)</span></span>
+            </div>
+            <div class="footer-contact-item" style="display: flex; gap: 0.75rem; align-items: flex-start; margin-top: 0.25rem;">
+              <i data-lucide="globe" style="width:20px;height:20px;flex-shrink:0;opacity:0.8;margin-top:2px;"></i> <span style="line-height: 1.4;"><a href="https://www.pl.gov.my" target="_blank" style="color: var(--accent); text-decoration: none; font-weight: bold;">www.pl.gov.my</a><br><span style="opacity:0.6; font-size:0.85rem;">(Laman Web Rasmi)</span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="footer-bottom" style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; color: rgba(255,255,255,0.4); flex-wrap: wrap; gap: 0.5rem;">
+        <div>© 2026 Hak Cipta Terpelihara Perbadanan Labuan</div>
+        <a href="admin.html" style="color: inherit; text-decoration: none; transition: color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,0.4)'">Panel Admin SPKB</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script>lucide.createIcons();</script>
+  <script>
+    const API_URL = "http://127.0.0.1:8000/api/attendance/";
+    let certInterval = null;
+
+    let currentParticipant = null;
+
+    async function checkCertStatus() {
+      const ic = document.getElementById('check-ic').value.trim().replace(/\D/g, '');
+      const resultDiv = document.getElementById('check-result');
+
+      if (!ic) {
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = '<span style="color:#f87171;">Sila masukkan No. IC.</span>';
+        return;
+      }
+
+      resultDiv.style.display = 'block';
+      resultDiv.innerHTML = '<span style="color:#93c5fd;">Menyemak rekod...</span>';
+      if (certInterval) { clearInterval(certInterval); certInterval = null; }
+
+      try {
+        const res = await fetch(API_URL + 'participant/' + ic + '/');
+        const data = await res.json();
+
+        if (data.status !== 'success' || !data.data?.length) {
+          resultDiv.innerHTML = '<span style="color:#fca5a5;">Rekod tidak dijumpai. Pastikan No. IC betul atau daftar kehadiran dahulu.</span>';
+          return;
+        }
+
+        const participant = data.data[0];
+        currentParticipant = participant; // Save for download generator
+
+        const submitTime = new Date(participant.raw_date).getTime();
+        const delayMs = participant.cert_delay || 120000;
+        const targetTime = submitTime + delayMs;
+
+        const updateTimer = () => {
+          const diff = targetTime - Date.now();
+          if (diff <= 0) {
+            clearInterval(certInterval);
+            resultDiv.innerHTML = `
+              <div style="color:#4ade80; margin-bottom:1rem; font-weight:600; font-size: 0.95rem;">Sijil anda sedia dimuat turun!</div>
+              <button class="btn btn-success btn-full" onclick="downloadCert()" id="btn-dl-index">
+                Muat Turun Sijil
+              </button>`;
+          } else {
+            const h = Math.floor(diff / (1000 * 60 * 60));
+            const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const s = Math.floor((diff % (1000 * 60)) / 1000);
+            
+            let timeStr = '';
+            if (h > 0) timeStr += `${h}j `;
+            timeStr += `${m}m ${s}s`;
+            
+            resultDiv.innerHTML = `
+              <div style="color:var(--accent-light); margin-bottom:0.5rem; font-weight:600;">Program masih berlangsung</div>
+              Sijil sedang dijana... Sila tunggu:<br>
+              <strong style="font-size:1.4rem; color:white; display:inline-block; margin-top:0.5rem; letter-spacing: 1px;">${timeStr}</strong>`;
+          }
+        };
+        updateTimer();
+        certInterval = setInterval(updateTimer, 1000);
+      } catch (err) {
+        console.error(err);
+        resultDiv.innerHTML = '<span style="color:#fca5a5;">Ralat sambungan ke pelayan. Pastikan server Django sedang berjalan.</span>';
+      }
+    }
+
+    function getSettings() {
+      const s = JSON.parse(localStorage.getItem('cert_settings') || '{}');
+      return {
+        nameX: s.nameX ?? 500, nameY: s.nameY ?? 360, nameFontSize: s.nameFontSize ?? 42,
+        icX: s.icX ?? 500, icY: s.icY ?? 470, icFontSize: s.icFontSize ?? 28,
+        showIC: s.showIC ?? true, textColor: s.textColor ?? '#f0f4f8',
+        fontFamily: s.fontFamily ?? 'Palatino, serif'
+      };
+    }
+
+    function loadImage(src) {
+      return new Promise((res, rej) => { const img = new Image(); img.onload = () => res(img); img.onerror = rej; img.src = src; });
+    }
+
+    function overlayText(ctx, p, s, w, h) {
+      ctx.textAlign = 'center';
+      ctx.fillStyle = s.textColor;
+      ctx.font = `bold ${s.nameFontSize}px ${s.fontFamily}`;
+      ctx.fillText(p.fullname, s.nameX, s.nameY);
+      if (s.showIC && p.ic_number) {
+        ctx.font = `bold ${s.icFontSize}px ${s.fontFamily}`;
+        ctx.fillText(p.ic_number, s.icX, s.icY);
+      }
+    }
+
+    function drawDefaultCertBg(ctx, w, h) {
+      ctx.fillStyle = '#0d2238'; ctx.fillRect(0, 0, w, h);
+      ctx.strokeStyle = '#c8963e'; ctx.lineWidth = 8; ctx.strokeRect(20, 20, w - 40, h - 40);
+      ctx.lineWidth = 2; ctx.strokeRect(34, 34, w - 68, h - 68);
+      ctx.fillStyle = '#e8b96a'; ctx.font = 'bold 28px Palatino, serif'; ctx.textAlign = 'center';
+      ctx.fillText('PERBADANAN LABUAN', w / 2, 100);
+      ctx.fillStyle = '#f0f4f8'; ctx.font = 'bold 38px Palatino, serif';
+      ctx.fillText('SIJIL PENYERTAAN', w / 2, 160);
+      ctx.fillStyle = '#94a3b8'; ctx.font = '22px Palatino, serif';
+      ctx.fillText('CERTIFICATE OF PARTICIPATION', w / 2, 195);
+      ctx.strokeStyle = '#c8963e'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(100, 220); ctx.lineTo(w - 100, 220); ctx.stroke();
+      ctx.fillStyle = '#94a3b8'; ctx.font = '20px Palatino, serif';
+      ctx.fillText('Diberikan kepada / Awarded to', w / 2, 290);
+      ctx.strokeStyle = '#c8963e55'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(150, 410); ctx.lineTo(w - 150, 410); ctx.stroke();
+      ctx.fillStyle = '#94a3b8'; ctx.font = '16px Palatino, serif';
+      ctx.fillText('No. Kad Pengenalan / IC Number:', w / 2, 450);
+      ctx.strokeStyle = '#c8963e'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(100, h - 130); ctx.lineTo(w - 100, h - 130); ctx.stroke();
+      ctx.fillStyle = '#94a3b8'; ctx.font = '16px Palatino, serif';
+      ctx.fillText('_______________________________', w / 2, h - 90);
+      ctx.fillText('Tandatangan / Signature', w / 2, h - 68);
+      ctx.fillText('Perbadanan Labuan', w / 2, h - 48);
+    }
+
+    async function downloadCert() {
+      if (!currentParticipant) return;
+      
+      const btn = document.getElementById('btn-dl-index');
+      btn.innerHTML = '<span class="spinner" style="width:16px;height:16px;border-width:2px; display:inline-block; margin-right: 5px;"></span> Menjana Sijil...';
+      btn.disabled = true;
+
+      try {
+        if (typeof window.jspdf === 'undefined') {
+          await new Promise((res, rej) => {
+            const s = document.createElement('script');
+            s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+            s.onload = res; s.onerror = rej; document.head.appendChild(s);
+          });
+        }
+
+        const s = getSettings();
+        const tpl = localStorage.getItem('cert_template');
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const { jsPDF } = window.jspdf;
+        
+        let bg = null;
+        if (tpl) bg = await loadImage(tpl);
+        
+        const W = bg ? (bg.naturalWidth || bg.width) : 1000;
+        const H = bg ? (bg.naturalHeight || bg.height) : 707;
+        
+        const pdf = new jsPDF({ orientation: W > H ? 'landscape' : 'portrait', unit: 'px', format: [W, H] });
+        
+        canvas.width = W; canvas.height = H;
+        if (bg) ctx.drawImage(bg, 0, 0, W, H); else drawDefaultCertBg(ctx, W, H);
+        
+        overlayText(ctx, currentParticipant, s, W, H);
+        
+        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, W, H);
+        pdf.save(`Sijil_${currentParticipant.fullname.replace(/\s+/g, '_')}.pdf`);
+        
+        btn.innerHTML = 'Berjaya Dimuat Turun!';
+        setTimeout(() => {
+           btn.innerHTML = 'Muat Turun Sijil Semula';
+           btn.disabled = false;
+        }, 3000);
+      } catch (e) {
+        console.error(e);
+        btn.innerHTML = 'Ralat. Cuba lagi.';
+        btn.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>
