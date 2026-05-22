@@ -128,3 +128,4 @@ backend/test_certificate.pdf
 
 # Security (Never push actual secret keys)
 .env
+.env.example
