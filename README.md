@@ -51,13 +51,5 @@ Buka **http://127.0.0.1:8000/** di pelayar web.
 | `GET`    | `/api/attendance/export/`            | Muat turun CSV            |
 | `GET`    | `/api/attendance/download-certificate/<id>/` | Muat turun sijil PDF |
 
-## Admin Panel
-
-Buka `admin.html` atau klik "Panel Admin" di footer laman utama.
-
-- **Username:** `Administrator`
-- **Password:** `admin123` (boleh ditukar dalam tetapan)
-
----
 
 © 2026 Perbadanan Labuan
