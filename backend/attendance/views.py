@@ -120,7 +120,7 @@ class RecordDetailView(views.APIView):
 # ──────────────────────────────────────────────
 
 class GetParticipantByICView(views.APIView):
-    """GET: Find the most recent record for a given IC number."""
+    """GET: Find all records for a given IC number."""
     permission_classes = [AllowAny]
 
     def get(self, request, ic_number):
@@ -131,26 +131,20 @@ class GetParticipantByICView(views.APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Try exact match first, then digits-only match
-        today = timezone.now().date()
-        records = AttendanceRecord.objects.filter(
-            ic_number=clean_ic,
-            timestamp__gte=today
-        ).select_related('folder__department').order_by('-timestamp')
+        all_records = AttendanceRecord.objects.select_related('folder__department').order_by('-timestamp')
+        matching_ids = []
+        for r in all_records:
+            if re.sub(r'\D', '', r.ic_number) == clean_ic:
+                matching_ids.append(r.id)
 
-        if not records.exists():
-            all_records = AttendanceRecord.objects.select_related('folder__department').order_by('-timestamp')
-            for r in all_records:
-                if re.sub(r'\D', '', r.ic_number) == clean_ic:
-                    records = AttendanceRecord.objects.filter(id=r.id)
-                    break
-
-        if records.exists():
-            record = records.first()
+        if matching_ids:
+            records = AttendanceRecord.objects.filter(id__in=matching_ids).select_related('folder__department').order_by('-timestamp')
+            # Return all matching records for the IC
             return Response({
                 'status': 'success',
-                'data': [_serialize_record(record)],
+                'data': [_serialize_record(r) for r in records],
             })
+            
         return Response(
             {'status': 'error', 'message': 'Not found'},
             status=status.HTTP_404_NOT_FOUND,
@@ -256,6 +250,15 @@ class DepartmentFolderListView(views.APIView):
              'cert_delay': folder.cert_delay, 'created': created},
             status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
         )
+
+
+class DepartmentDetailView(views.APIView):
+    """DELETE: Delete a department and all its associated folders and records."""
+    
+    def delete(self, request, dept_id):
+        department = get_object_or_404(Department, id=dept_id)
+        department.delete()
+        return Response({'status': 'success', 'message': 'Department deleted successfully'})
 
 
 class FolderDetailView(views.APIView):
@@ -404,6 +407,16 @@ def _serialize_record(record):
         'department_name': record.folder.department.name if record.folder and record.folder.department else '—',
         'folder_name': record.folder.name if record.folder else '—',
         'cert_delay': record.folder.cert_delay if record.folder else 120000,
+        'cert_template': record.folder.cert_template if record.folder else None,
+        'name_x': record.folder.name_x if record.folder else 500,
+        'name_y': record.folder.name_y if record.folder else 360,
+        'name_size': record.folder.name_size if record.folder else 42,
+        'show_ic': record.folder.show_ic if record.folder else True,
+        'ic_x': record.folder.ic_x if record.folder else 500,
+        'ic_y': record.folder.ic_y if record.folder else 470,
+        'ic_size': record.folder.ic_size if record.folder else 28,
+        'text_color': record.folder.text_color if record.folder else '#f0f4f8',
+        'font_family': record.folder.font_family if record.folder else 'Palatino, serif',
         'timestamp': record.timestamp.strftime('%d %B %Y, %I:%M %p'),
         'raw_date': record.timestamp.isoformat(),
         'certificate_generated': record.certificate_generated,

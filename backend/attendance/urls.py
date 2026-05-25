@@ -13,6 +13,7 @@ from .views import (
     DepartmentFolderListView,
     FolderDetailView,
     ExportCSVView,
+    DepartmentDetailView,
 )
 
 urlpatterns = [
@@ -30,6 +31,7 @@ urlpatterns = [
     path('participant/<str:ic_number>/', GetParticipantByICView.as_view(), name='get_participant'),
 
     # Programs/Folders
+    path('departments/<int:dept_id>/', DepartmentDetailView.as_view(), name='department_detail'),
     path('folders/', DepartmentFolderListView.as_view(), name='folder_list'),
     path('folders/<int:folder_id>/', FolderDetailView.as_view(), name='folder_detail'),
 

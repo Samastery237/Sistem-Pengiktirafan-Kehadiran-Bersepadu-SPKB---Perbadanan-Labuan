@@ -93,7 +93,6 @@
         <select id="department-selector" class="form-input" style="width: auto; padding: 0.3rem 2rem 0.3rem 1rem; min-width: 150px; height: 36px; margin: 0;" onchange="changeDepartment(this.value)">
           <option value="">Semua Jabatan</option>
         </select>
-        <button class="btn btn-primary btn-sm" style="height: 36px;" onclick="createNewDepartment()">Tambah Jabatan</button>
       </div>
 
       <div style="display:flex; align-items:center; gap:0.5rem; border-left: 1px solid rgba(255,255,255,0.1); padding-left: 1rem;">
@@ -173,11 +172,11 @@
                 <th><input type="checkbox" id="check-all" onchange="toggleAll(this)" title="Pilih semua" /></th>
                 <th>#</th>
                 <th>Nama / Name</th>
-                <th>No. IC</th>
-                <th>No. Telefon</th>
-                <th>E-mel</th>
-                <th>Organisasi</th>
-                <th>Lokasi Folder</th>
+                <th>No. IC / IC Number</th>
+                <th>No. Telefon / Phone Number</th>
+                <th>E-mel / Email</th>
+                <th>Organisasi / Organization</th>
+                <th>Lokasi Folder / Folder Location</th>
                 <th>Tarikh / Date</th>
                 <th>Tindakan / Actions</th>
               </tr>
@@ -485,7 +484,7 @@
   <!-- Toast -->
   <div class="toast" id="toast" role="alert"></div>
 
-  <script src="js/admin.js?v=7"></script>
+  <script src="js/admin.js?v=3"></script>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script>
     lucide.createIcons();

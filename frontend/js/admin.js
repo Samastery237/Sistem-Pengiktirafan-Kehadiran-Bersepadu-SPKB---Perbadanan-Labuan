@@ -147,7 +147,7 @@ function getCurrentSettingsFromUI() {
   return {
     nameX: gn('name-x'), nameY: gn('name-y'), nameFontSize: gn('name-size'),
     icX: gn('ic-x'), icY: gn('ic-y'), icFontSize: gn('ic-size'),
-    showIC: gc('show-ic-on-cert'), textColor: g('text-color') || '#f0f4f8',
+    showIC: true, textColor: g('text-color') || '#f0f4f8',
     fontFamily: g('font-family') || 'Palatino, serif',
     eventName: g('event-name') || '', eventDate: g('event-date-display') || '',
     organizer: g('event-organizer') || 'Perbadanan Labuan',
@@ -319,8 +319,8 @@ function populateFolders() {
   
   folderSel.disabled = false;
   btnAdd.disabled = false;
-  btnLink.disabled = false;
-  btnDel.disabled = false;
+  btnLink.disabled = !currentFolderId;
+  btnDel.disabled = !currentFolderId;
   
   const dept = departmentsData.find(d => String(d.id) === String(currentDepartmentId));
   folderSel.innerHTML = '<option value="">-- Pilih Folder --</option>';
@@ -367,33 +367,18 @@ function changeFolder(val) {
   } else {
       currentFolderData = null;
   }
+  
+  const btnLink = document.getElementById('btn-link-folder');
+  const btnDel = document.getElementById('btn-del-folder');
+  if (btnLink) btnLink.disabled = !currentFolderId;
+  if (btnDel) btnDel.disabled = !currentFolderId;
+  
   clearCertificateView();
   refreshData();
   loadSettings();
   showToast('<i class="fa-solid fa-folder"></i> Folder ditukar.', 'success');
 }
 
-async function createNewDepartment() {
-  openPromptModal({
-    title: 'Tambah Jabatan Baru',
-    placeholder: 'Nama jabatan (cth: HR, Kewangan)...',
-    confirmText: 'Tambah',
-    onConfirm: async (name) => {
-      if (!name || !name.trim()) return;
-      try {
-        const res = await api('folders/', { method: 'POST', body: { department: name.trim(), folder: 'Umum' } });
-        if (res.status === 'success') {
-          showToast('<i class="fa-solid fa-circle-check"></i> Jabatan ditambah!', 'success');
-          await loadHierarchy();
-          if (res.department_id) {
-            document.getElementById('dept-selector').value = res.department_id;
-            changeDepartment(res.department_id);
-          }
-        }
-      } catch (e) { showToast('<i class="fa-solid fa-circle-xmark"></i> Gagal ditambah.', 'error'); }
-    }
-  });
-}
 
 async function createNewFolder() {
   if (!currentDepartmentId) return;
@@ -416,6 +401,7 @@ async function createNewFolder() {
     }
   });
 }
+
 
 function showShareableLink() {
   if (!currentFolderId) { 
@@ -458,8 +444,11 @@ async function deleteCurrentFolder() {
         if (res.status === 'success') {
           showToast('<i class="fa-solid fa-circle-check"></i> Folder dipadam!', 'success');
           currentFolderId = null;
+          currentFolderData = null; // Explicitly clear local memory!
           loadHierarchy();
+          clearCertificateView();
           refreshData();
+          loadSettings(); // Reset the UI forms
         }
       } catch (e) {
         showToast('<i class="fa-solid fa-circle-xmark"></i> Ralat memadam folder.', 'error');
@@ -467,6 +456,7 @@ async function deleteCurrentFolder() {
     }
   });
 }
+
 
 // ═══════════════════════════════════════
 //  DATA REFRESH
@@ -1000,7 +990,7 @@ async function saveSettings() {
   const payload = {
     name_x: gn('name-x'), name_y: gn('name-y'), name_size: gn('name-size'),
     ic_x: gn('ic-x'), ic_y: gn('ic-y'), ic_size: gn('ic-size'),
-    show_ic: gc('show-ic-on-cert'), text_color: g('text-color') || '#000000',
+    show_ic: true, text_color: g('text-color') || '#000000',
     font_family: g('font-family') || 'Arial, sans-serif',
     event_name: g('event-name') || '', event_date: g('event-date-display') || '',
     organizer: g('event-organizer') || 'Perbadanan Labuan',
@@ -1027,7 +1017,7 @@ async function loadSettings() {
   const chk = (id, v) => { const el = document.getElementById(id); if (el) el.checked = v; };
   set('name-x', s.nameX); set('name-y', s.nameY); set('name-size', s.nameFontSize);
   set('ic-x', s.icX); set('ic-y', s.icY); set('ic-size', s.icFontSize);
-  chk('show-ic-on-cert', s.showIC); set('text-color', s.textColor); set('font-family', s.fontFamily);
+  set('text-color', s.textColor); set('font-family', s.fontFamily);
   set('event-name', s.eventName); set('event-date-display', s.eventDate);
   set('event-organizer', s.organizer);
   set('cert-delay-hours', s.certDelayHours);

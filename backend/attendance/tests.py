@@ -419,9 +419,11 @@ class GetParticipantByICViewTest(APITestCaseBase):
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['status'], 'success')
-        # Should return the most recent record (record2)
         
-        self.assertEqual(response.data['data'][0]['fullname'], 'User Two')
+        # It should return all records matching the clean IC.
+        # record1 (User One) is more recent than record2 (User Two, created 1 hour ago)
+        self.assertEqual(response.data['data'][0]['fullname'], 'User One')
+        self.assertEqual(response.data['data'][1]['fullname'], 'User Two')
 
     def test_get_participant_by_ic_invalid(self):
         """Test getting participant with invalid IC"""
@@ -438,6 +440,21 @@ class GetParticipantByICViewTest(APITestCaseBase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertEqual(response.data['status'], 'error')
         self.assertEqual(response.data['message'], 'Not found')
+
+    def test_get_participant_by_ic_multiple_records(self):
+        """Test that multiple records are returned when a participant joins multiple programs"""
+        url = reverse('get_participant', kwargs={'ic_number': '123456789012'})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['status'], 'success')
+        
+        # We created two records for this IC in setUp
+        self.assertEqual(len(response.data['data']), 2)
+        
+        # Ensure the settings attached are isolated and accurate per record
+        # record1 (Test Program) is more recent, record2 (Test Folder 2) is older
+        self.assertEqual(response.data['data'][0]['folder_name'], 'Test Program')
+        self.assertEqual(response.data['data'][1]['folder_name'], 'Another Program')
 
 
 class AttendanceStatusViewTest(APITestCaseBase):
@@ -513,6 +530,46 @@ class StatsViewTest(APITestCaseBase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
           # Only stats user 1 and 2
         self.assertEqual(response.data['certs'], 1)  # Only stats user 1 has certificate
+
+
+class DepartmentDetailViewTest(APITestCaseBase):
+    def setUp(self):
+        super().setUp()
+        self.dept = Department.objects.create(name='Test Dept')
+        self.folder1 = Folder.objects.create(department=self.dept, name='Folder 1', cert_delay=10)
+        self.folder2 = Folder.objects.create(department=self.dept, name='Folder 2', cert_delay=20)
+        self.record = AttendanceRecord.objects.create(
+            folder=self.folder1,
+            fullname='Test Name',
+            ic_number='123456789012',
+            phone='0123456789',
+            organization='Test Org'
+        )
+
+    def test_delete_department_success(self):
+        """Test deleting a department successfully"""
+        url = reverse('department_detail', kwargs={'dept_id': self.dept.id})
+        response = self.client.delete(url)
+        
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['status'], 'success')
+        
+        # Verify cascades (APITestCaseBase creates 1 default dept and 2 default folders)
+        self.assertEqual(Department.objects.count(), 1)
+        self.assertEqual(Folder.objects.count(), 2)
+        self.assertEqual(AttendanceRecord.objects.count(), 0)
+
+    def test_delete_department_not_found(self):
+        """Test deleting a non-existent department"""
+        url = reverse('department_detail', kwargs={'dept_id': 99999})
+        response = self.client.delete(url)
+        
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        
+        # Verify nothing was deleted
+        self.assertEqual(Department.objects.count(), 2)
+        self.assertEqual(Folder.objects.count(), 4)
+        self.assertEqual(AttendanceRecord.objects.count(), 1)
 
 
 class FolderListViewTest(APITestCaseBase):
