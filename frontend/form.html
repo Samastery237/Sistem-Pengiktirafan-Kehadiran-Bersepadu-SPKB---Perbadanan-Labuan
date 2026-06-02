@@ -42,28 +42,7 @@
     .terms-check input { margin-top: 3px; accent-color: var(--primary-light); }
     .terms-check label { font-size: 0.83rem; color: var(--text-muted); cursor: pointer; }
     .submit-area { margin-top: 1.75rem; }
-    .lang-toggle {
-      display: flex;
-      gap: 0.5rem;
-      justify-content: center;
-      margin-bottom: 1.5rem;
-    }
-    .lang-btn {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      color: var(--text-muted);
-      border-radius: 100px;
-      padding: 0.3rem 0.9rem;
-      font-size: 0.8rem;
-      cursor: pointer;
-      transition: var(--transition);
-      font-family: 'Inter', sans-serif;
-    }
-    .lang-btn.active {
-      background: rgba(37,99,168,0.2);
-      border-color: var(--primary-light);
-      color: #93c5fd;
-    }
+
     .info-note {
       display: flex;
       align-items: flex-start;
@@ -123,16 +102,12 @@
     <div class="navbar-links">
       <a href="index.html">Laman Utama</a>
       <a href="form.html" class="active">Daftar Kehadiran</a>
+      <a href="admin.html" style="color: var(--primary-light);"><i data-lucide="shield-check" style="width:14px;height:14px;margin-right:4px;margin-bottom:2px;"></i>Admin</a>
     </div>
   </nav>
 
   <div class="form-container">
 
-    <!-- Language Toggle -->
-    <div class="lang-toggle">
-      <button class="lang-btn active" id="lang-bm" onclick="setLang('bm')">🇲🇾 BM</button>
-      <button class="lang-btn" id="lang-en" onclick="setLang('en')">🇬🇧 EN</button>
-    </div>
 
     <div class="form-card fade-in">
       <div class="form-header">
@@ -168,7 +143,6 @@
             maxlength="100"
             autocomplete="name"
           />
-          <div class="char-count"><span id="name-count">0</span>/100</div>
           <div class="form-error" id="error-fullname">Sila masukkan nama penuh anda.</div>
         </div>
 
@@ -187,7 +161,6 @@
             maxlength="14"
             inputmode="numeric"
           />
-          <div class="ic-hint">Format: <span>YYMMDD-PB-XXXX</span> (dengan atau tanpa sempang / with or without dashes)</div>
           <div class="form-error" id="error-ic">Sila masukkan nombor kad pengenalan yang sah.</div>
         </div>
 
@@ -208,8 +181,6 @@
           />
           <div class="form-error" id="error-phone">Sila masukkan nombor telefon yang sah.</div>
         </div>
-
-        <hr class="form-divider" />
 
         <!-- Email (optional) -->
         <div class="form-group">
@@ -284,7 +255,7 @@
         <!-- Submit -->
         <div class="submit-area">
           <button type="submit" class="btn btn-accent btn-full btn-lg" id="submit-btn">
-            <span id="submit-text"><i data-lucide="send"></i> Hantar Kehadiran / Submit Attendance</span>
+            <span id="submit-text">Hantar Kehadiran / Submit Attendance</span>
             <span class="spinner" id="submit-spinner" style="display:none;"></span>
           </button>
         </div>
@@ -342,8 +313,7 @@
       </div>
 
       <div class="footer-bottom" style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; color: rgba(255,255,255,0.4); flex-wrap: wrap; gap: 0.5rem;">
-        <div>© 2026 Hak Cipta Terpelihara Perbadanan Labuan</div>
-        <a href="admin.html" style="color: inherit; text-decoration: none; transition: color 0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(255,255,255,0.4)'">Panel Admin SPKB</a>
+        <div>&copy; 2026 Hak Cipta Terpelihara Perbadanan Labuan</div>
       </div>
     </div>
   </footer>

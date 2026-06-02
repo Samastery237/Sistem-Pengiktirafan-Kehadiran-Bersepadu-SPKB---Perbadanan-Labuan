@@ -1,7 +1,7 @@
 /* form.js — Attendance Form Logic (Django Backend) */
 
 // ─── Configuration ───
-const API_BASE = 'http://localhost:8000/api/attendance/';
+const API_BASE = `http://${window.location.hostname}:8000/api/attendance/`;
 
 // Get department and folder from URL parameter
 const urlParams = new URLSearchParams(window.location.search);
@@ -15,7 +15,6 @@ const LANG = {
     formSubtitle: 'Sila isi maklumat anda dengan tepat dan lengkap.',
     infoNote: 'Maklumat anda akan digunakan untuk penjanaan sijil penyertaan secara automatik.',
     labelName: 'Nama Penuh',
-    submitText: '<i class="fa-solid fa-circle-check"></i> Hantar Kehadiran / Submit Attendance',
     errName: 'Sila masukkan nama penuh anda.',
     errIC: 'Sila masukkan nombor kad pengenalan yang sah (12 digit).',
     errPhone: 'Sila masukkan nombor telefon yang sah.',
@@ -28,7 +27,6 @@ const LANG = {
     formSubtitle: 'Please fill in your information accurately and completely.',
     infoNote: 'Your information will be used for automatic certificate generation.',
     labelName: 'Full Name',
-    submitText: '<i class="fa-solid fa-circle-check"></i> Submit Attendance / Hantar Kehadiran',
     errName: 'Please enter your full name.',
     errIC: 'Please enter a valid IC number (12 digits).',
     errPhone: 'Please enter a valid phone number.',
@@ -40,17 +38,7 @@ const LANG = {
 
 let currentLang = 'bm';
 
-// ─── Language Toggle ───
-function setLang(lang) {
-  currentLang = lang;
-  const t = LANG[lang];
-  document.getElementById('form-title').textContent = t.formTitle;
-  document.getElementById('form-subtitle').textContent = t.formSubtitle;
-  document.getElementById('info-note-text').textContent = t.infoNote;
-  document.getElementById('submit-text').textContent = t.submitText;
-  document.getElementById('lang-bm').classList.toggle('active', lang === 'bm');
-  document.getElementById('lang-en').classList.toggle('active', lang === 'en');
-}
+
 
 // ─── Progress Bar ───
 function updateProgress() {
@@ -233,12 +221,9 @@ document.addEventListener('DOMContentLoaded', () => {
     updateProgress();
   });
 
-  document.getElementById('fullname').addEventListener('input', function () {
-    document.getElementById('name-count').textContent = this.value.length;
-    updateProgress();
-  });
 
-  ['email', 'organization'].forEach(id => {
+
+  ['fullname', 'email', 'organization'].forEach(id => {
     document.getElementById(id)?.addEventListener('input', updateProgress);
   });
 

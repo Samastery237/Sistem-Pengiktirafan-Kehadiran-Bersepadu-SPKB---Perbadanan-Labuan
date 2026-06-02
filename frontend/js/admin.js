@@ -1,6 +1,6 @@
 /* admin.js — Admin Panel Logic (Django Backend) */
 
-const API_BASE = 'http://localhost:8000/api/attendance/';
+const API_BASE = `http://${window.location.hostname}:8000/api/attendance/`;
 const DEFAULT_PW = 'admin123';
 
 let currentDepartmentId = null;

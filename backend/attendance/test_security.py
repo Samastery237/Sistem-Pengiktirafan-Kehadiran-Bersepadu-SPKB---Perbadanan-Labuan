@@ -5,11 +5,16 @@ from rest_framework import status
 from django.contrib.auth.models import User
 import time
 
+from django.core.cache import cache
+
 class SecurityFeaturesTest(TestCase):
     def setUp(self):
         self.client = APIClient()
         self.login_url = reverse('auth_login')
         self.user = User.objects.create_user(username='admin', password='StrongPassword123!')
+
+    def tearDown(self):
+        cache.clear()
 
     def test_brute_force_login_protection(self):
         """
