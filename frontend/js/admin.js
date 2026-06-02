@@ -1,6 +1,6 @@
 /* admin.js — Admin Panel Logic (Django Backend) */
 
-const API_BASE = '/api/attendance/';
+const API_BASE = 'http://localhost:8000/api/attendance/';
 const DEFAULT_PW = 'admin123';
 
 let currentDepartmentId = null;
@@ -714,8 +714,13 @@ async function drawCertificate(p) {
   if (!p) return;
   const canvas = document.getElementById('cert-canvas');
   const ctx = canvas.getContext('2d');
-  const s = getSettings();
-  const tpl = currentFolderData ? currentFolderData.cert_template : null;
+  const s = {
+    nameX: p.name_x ?? 500, nameY: p.name_y ?? 360, nameFontSize: p.name_size ?? 42,
+    icX: p.ic_x ?? 500, icY: p.ic_y ?? 470, icFontSize: p.ic_size ?? 28,
+    showIC: p.show_ic ?? true, textColor: p.text_color ?? '#000000',
+    fontFamily: p.font_family ?? 'Arial, sans-serif'
+  };
+  const tpl = p.cert_template || null;
 
   document.getElementById('cert-empty').style.display = 'none';
   canvas.style.display = 'block';
@@ -1001,9 +1006,13 @@ async function saveSettings() {
     const res = await api(`folders/${currentFolderId}/`, { method: 'PATCH', body: payload });
     if (res.status === 'success') {
       showToast('<i class="fa-solid fa-circle-check"></i> Tetapan disimpan ke folder!', 'success');
-      if (currentFolderData) {
-         Object.assign(currentFolderData, payload);
-      }
+      currentFolderData = { ...currentFolderData, ...payload };
+      const cid = parseInt(currentFolderId);
+      cachedRecords.forEach(r => {
+        if (r.folder_id === cid) {
+          Object.assign(r, payload);
+        }
+      });
       if (selectedParticipant) drawCertificate(selectedParticipant);
     }
   } catch(e) {
@@ -1054,6 +1063,7 @@ function handleTemplateUpload(e) {
       }
       api(`folders/${currentFolderId}/`, { method: 'PATCH', body: { cert_template: data } }).then(() => {
         if (currentFolderData) currentFolderData.cert_template = data;
+        cachedRecords.forEach(r => { if (r.folder_id === parseInt(currentFolderId)) r.cert_template = data; });
         const el = document.getElementById('template-preview-img');
         if (el) { el.src = data; el.style.display = 'block'; }
         showToast('<i class="fa-solid fa-circle-check"></i> Templat dimuat naik ke folder!', 'success');
@@ -1069,6 +1079,7 @@ function clearTemplate() {
   if (!currentFolderId) return;
   api(`folders/${currentFolderId}/`, { method: 'PATCH', body: { cert_template: null } }).then(() => {
     if (currentFolderData) currentFolderData.cert_template = null;
+    cachedRecords.forEach(r => { if (r.folder_id === parseInt(currentFolderId)) r.cert_template = null; });
     const img = document.getElementById('template-preview-img'); if (img) img.style.display = 'none';
     document.getElementById('template-upload').value = '';
     showToast('<i class="fa-solid fa-trash"></i>️ Templat dipadam dari folder.', 'info');

@@ -225,7 +225,7 @@
             </div>
             <div id="cert-actions" style="margin-top:1rem; display:none;">
               <div style="display:flex; gap:0.75rem; justify-content:center; flex-wrap:wrap;">
-                <button class="btn btn-primary" onclick="downloadCertPDF()" id="btn-dl-pdf"><i data-lucide="file-pdf"></i> Muat Turun PDF</button>
+                <button class="btn btn-primary" onclick="downloadCertPDF()" id="btn-dl-pdf"><i class="fa-solid fa-file-pdf"></i> Muat Turun PDF</button>
                 <button class="btn btn-ghost" onclick="downloadCertPNG()" id="btn-dl-png"><i data-lucide="image"></i> Muat Turun PNG</button>
               </div>
             </div>
@@ -276,8 +276,8 @@
             </div>
             <div style="margin-bottom:1rem;">
               <label class="form-label" style="margin-bottom:0.5rem;"><i data-lucide="id-card"></i> No. IC</label>
-              <div class="form-group" style="display:flex; align-items:center; gap:0.75rem; margin-bottom:0.5rem;">
-                <input type="checkbox" id="show-ic-on-cert" onchange="saveSettings()" style="accent-color:var(--primary-light); width:16px; height:16px;" />
+              <div class="form-group" style="display:none; align-items:center; gap:0.75rem; margin-bottom:0.5rem;">
+                <input type="checkbox" id="show-ic-on-cert" onchange="saveSettings()" style="accent-color:var(--primary-light); width:16px; height:16px;" checked />
                 <label for="show-ic-on-cert" style="font-size:0.85rem; color:var(--text-muted);">Tunjuk IC pada sijil</label>
               </div>
               <div id="ic-pos-fields">
@@ -484,7 +484,7 @@
   <!-- Toast -->
   <div class="toast" id="toast" role="alert"></div>
 
-  <script src="js/admin.js?v=3"></script>
+  <script src="js/admin.js?v=4"></script>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script>
     lucide.createIcons();

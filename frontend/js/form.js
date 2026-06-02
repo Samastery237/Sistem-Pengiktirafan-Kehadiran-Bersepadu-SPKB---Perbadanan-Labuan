@@ -1,7 +1,7 @@
 /* form.js — Attendance Form Logic (Django Backend) */
 
 // ─── Configuration ───
-const API_BASE = '/api/attendance/';
+const API_BASE = 'http://localhost:8000/api/attendance/';
 
 // Get department and folder from URL parameter
 const urlParams = new URLSearchParams(window.location.search);

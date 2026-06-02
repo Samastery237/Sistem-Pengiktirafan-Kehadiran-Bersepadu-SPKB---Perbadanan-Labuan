@@ -759,3 +759,92 @@ class DownloadCertificateViewTest(APITestCaseBase):
         url = reverse('download_certificate', kwargs={'record_id': fake_id})
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
+class AuthViewsTest(APITestCase):
+    """Test cases for authentication and authorization endpoints"""
+
+    def setUp(self):
+        self.client = APIClient()
+        from django.contrib.auth.models import User
+        self.user_password = 'securepassword123'
+        self.user = User.objects.create_user(username='authadmin', password=self.user_password)
+        self.login_url = reverse('auth_login')
+        self.logout_url = reverse('auth_logout')
+        self.check_auth_url = reverse('auth_check')
+        self.change_password_url = reverse('auth_change_password')
+
+    def test_login_success(self):
+        """Test successful login"""
+        response = self.client.post(self.login_url, {'username': 'authadmin', 'password': self.user_password})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['status'], 'success')
+        self.assertIn('csrfToken', response.data)
+
+    def test_login_invalid_credentials(self):
+        """Test login with wrong password"""
+        response = self.client.post(self.login_url, {'username': 'authadmin', 'password': 'wrongpassword'})
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.data['status'], 'error')
+
+    def test_login_missing_fields(self):
+        """Test login with missing fields"""
+        response = self.client.post(self.login_url, {})
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.data['status'], 'error')
+
+    def test_logout_success(self):
+        """Test successful logout"""
+        self.client.force_authenticate(user=self.user)
+        response = self.client.post(self.logout_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['status'], 'success')
+
+    def test_logout_unauthenticated(self):
+        """Test logout without being authenticated"""
+        response = self.client.post(self.logout_url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_check_auth_success(self):
+        """Test check auth when authenticated"""
+        self.client.force_authenticate(user=self.user)
+        response = self.client.get(self.check_auth_url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['status'], 'success')
+        self.assertEqual(response.data['user'], 'authadmin')
+
+    def test_check_auth_unauthenticated(self):
+        """Test check auth when not authenticated"""
+        response = self.client.get(self.check_auth_url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_change_password_success(self):
+        """Test successfully changing password"""
+        self.client.force_authenticate(user=self.user)
+        response = self.client.post(self.change_password_url, {'new_password': 'newsecurepassword'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['status'], 'success')
+        
+        # Verify the new password works
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password('newsecurepassword'))
+
+    def test_change_password_too_short(self):
+        """Test changing password to something too short"""
+        self.client.force_authenticate(user=self.user)
+        response = self.client.post(self.change_password_url, {'new_password': 'short'})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['status'], 'error')
+
+    def test_change_password_unauthenticated(self):
+        """Test changing password without being authenticated"""
+        response = self.client.post(self.change_password_url, {'new_password': 'newsecurepassword'})
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_protected_endpoints_unauthenticated(self):
+        """Test that other endpoints require authentication"""
+        # We test hitting an endpoint that shouldn't be accessible
+        url = reverse('record_list')
+        response = self.client.get(url)
+        # Should be forbidden because no authentication provided
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
