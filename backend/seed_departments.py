@@ -1,15 +1,13 @@
 import os
-import sys
 import django
 
 # Setup Django environment
-sys.path.append(r"c:\Users\Samuel\Downloads\Sistem-Pengiktirafan-Kehadiran-Bersepadu-SPKB---Perbadanan-Labuan\backend")
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.settings')
 django.setup()
 
 from attendance.models import Department
 
-departments = [
+DEPARTMENTS = [
     "Pejabat Pengerusi",
     "Pejabat Ketua Pegawai Eksekutif",
     "Pejabat Timbalan Ketua Pegawai Eksekutif",
@@ -36,14 +34,25 @@ departments = [
     "Jabatan Penguatkuasaan",
     "Jabatan Pelesenan",
     "Unit Pelaburan PL",
+    "Agensi Kerajaan Lain",
+    "Sektor Swasta / NGO",
+    "Orang Awam",
     "Lain-Lain"
 ]
 
-for name in departments:
-    dept, created = Department.objects.get_or_create(name=name)
-    if created:
-        print(f"Created department: {name}")
-    else:
-        print(f"Department already exists: {name}")
+def seed():
+    print("Seeding departments...")
+    created_count = 0
+    for dept_name in DEPARTMENTS:
+        obj, created = Department.objects.get_or_create(name=dept_name)
+        if created:
+            created_count += 1
+            print(f"Created: {dept_name}")
+        else:
+            print(f"Already exists: {dept_name}")
+            
+    print(f"\nDone! Successfully created {created_count} new departments.")
+    print(f"Total departments in database: {Department.objects.count()}")
 
-print("Seeding complete.")
+if __name__ == '__main__':
+    seed()
