@@ -1,55 +1,118 @@
+<div align="center">
+  
 # Sistem Pengiktirafan Kehadiran Bersepadu (SPKB)
 ### Perbadanan Labuan
 
-Platform digital inovatif Perbadanan Labuan yang menyelaraskan pengurusan kehadiran acara, latihan, dan program rasmi secara automatik. Sistem ini mengintegrasikan pemantauan masa nyata dengan penjanaan sijil digital (e-Sijil) bagi memperkasa tadbir urus modal insan yang lebih efisien, telus, dan tanpa kertas.
+[![Python Compliance](https://img.shields.io/badge/Python-3.14+-blue.svg)](https://www.python.org)
+[![Framework](https://img.shields.io/badge/Django-6.0+-092E20.svg)](https://www.djangoproject.com/)
+[![Deployment](https://img.shields.io/badge/Docker-Enterprise_Ready-2496ED.svg)](https://www.docker.com/)
+[![License](https://img.shields.io/badge/License-Proprietary-red.svg)](#)
+[![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen.svg)]()
 
-## Ciri-Ciri Utama / Key Features
+*Enterprise-Grade Digital Attendance and Automated e-Certificate Issuance Platform*
 
-- **Perekodan Kehadiran** — Borang digital pantas untuk pendaftaran kehadiran peserta.
-- **Penjanaan Sijil Automatik** — e-Sijil dijana secara automatik selepas program tamat, dengan kawalan masa (countdown timer) yang boleh dikonfigurasikan oleh pentadbir.
-- **Panel Pentadbiran** — Paparan dashboard untuk mengurus peserta, melihat statistik, dan menjana sijil secara pukal.
-- **Pengurusan Program** — Pelbagai program boleh diurus secara berasingan, setiap satu dengan tetapan masa sijilnya sendiri.
-- **Eksport CSV** — Muat turun senarai kehadiran dalam format CSV.
+</div>
 
-## Teknologi / Tech Stack
+---
 
-| Layer    | Technology                |
-|----------|--------------------------|
-| Backend  | Django + Django REST Framework |
-| Database | SQLite (Development)     |
-| Frontend | HTML, CSS, Vanilla JS    |
-| PDF      | xhtml2pdf                |
+## 1. Executive Summary
 
-## Cara Menjalankan / How to Run
+**Sistem Pengiktirafan Kehadiran Bersepadu (SPKB)** is a proprietary, enterprise-grade digital platform engineered for **Perbadanan Labuan**. The system modernizes the administration of official government events, corporate training, and mandatory operational programs by providing a secure, paperless attendance tracking infrastructure coupled with automated digital certificate (e-Sijil) provisioning.
+
+Designed to meet strict data governance policies, SPKB eliminates manual documentation overhead while ensuring data integrity, providing real-time auditing capabilities, and enforcing strict Role-Based Access Control (RBAC) across departmental divisions.
+
+## 2. Core Capabilities & Architecture
+
+SPKB is architected for high availability, security, and precision.
+
+- **Automated Digital Issuance**: Cryptographically secure, dynamic generation of PDF certificates utilizing PyHanko and SVGLib upon verified attendance submission.
+- **Role-Based Access Control (RBAC)**: Multi-tiered administrative authorization architecture.
+  - *Super Administrators*: Full oversight, cross-departmental configuration, and global analytics.
+  - *Department Administrators*: Isolated authority restricted exclusively to intra-departmental events.
+- **Real-Time Data Analytics**: Administrative dashboards featuring live participant metrics, robust CSV data exportation, and bulk processing capabilities for compliance reporting.
+- **Security & Compliance**: Hardened API endpoints, enforced CSRF protection, secure HTTP-only session management, and comprehensive automated test validation.
+- **Containerized Infrastructure**: Fully packaged within Docker for scalable, highly-available deployment across hybrid-cloud or on-premise government servers.
+
+---
+
+## 3. Deployment & Infrastructure Setup
+
+This system supports containerized deployment for production environments and isolated local configurations for active development.
+
+### 3.1. Production Deployment (Docker) - *Standard*
+The mandated method for staging and production server environments to ensure parity and eliminate dependency conflicts.
 
 ```bash
-# 1. Aktifkan virtual environment
-cd backend
-..\venv\Scripts\activate    # Windows
+# 1. Clone the repository to the designated deployment directory
+git clone https://github.com/yourusername/Sistem-Pengiktirafan-Kehadiran-Bersepadu-SPKB---Perbadanan-Labuan.git
+cd Sistem-Pengiktirafan-Kehadiran-Bersepadu-SPKB---Perbadanan-Labuan
 
-# 2. Jalankan migrasi
+# 2. Provision and initiate the isolated container infrastructure
+docker compose up -d --build
+```
+
+**Service Interfaces:**
+- Public Intake Portal: `http://<server-ip>:8000/`
+- Secure Administrative Console: `http://<server-ip>:8000/admin.html`
+
+### 3.2. Local Development & Engineering
+For authorized software engineers executing structural modifications or running integration tests.
+
+```bash
+# 1. Initialize the Python virtual environment
+cd backend
+python -m venv venv_win
+venv_win\Scripts\activate
+
+# 2. Install required system dependencies
+pip install -r ../requirements.txt
+
+# 3. Execute database schema migrations
 python manage.py migrate
 
-# 3. Mulakan server
+# 4. Boot the localized development server
 python manage.py runserver
 ```
 
-Buka **http://127.0.0.1:8000/** di pelayar web.
+---
 
-## API Endpoints
+## 4. Quality Assurance & Testing
 
-| Method   | Endpoint                             | Fungsi                    |
-|----------|--------------------------------------|---------------------------|
-| `POST`   | `/api/attendance/submit/`            | Hantar kehadiran          |
-| `GET`    | `/api/attendance/records/`           | Senarai rekod             |
-| `DELETE` | `/api/attendance/records/<id>/`      | Padam rekod               |
-| `GET`    | `/api/attendance/participant/<ic>/`  | Semak peserta (IC)        |
-| `GET`    | `/api/attendance/stats/`             | Statistik kehadiran       |
-| `GET`    | `/api/attendance/programs/`          | Senarai program           |
-| `POST`   | `/api/attendance/programs/`          | Cipta program baharu      |
-| `PATCH`  | `/api/attendance/programs/<id>/`     | Kemas kini tetapan        |
-| `GET`    | `/api/attendance/export/`            | Muat turun CSV            |
-| `GET`    | `/api/attendance/download-certificate/<id>/` | Muat turun sijil PDF |
+To maintain software integrity, all code modifications must pass the centralized automated testing suites before deployment approval.
 
+```bash
+# Execute Backend Security, API, and RBAC Validation (Pytest)
+pytest backend/attendance/tests.py
 
-© 2026 Perbadanan Labuan
+# Execute Frontend UI and End-to-End Workflow Validation (Playwright)
+npx playwright test
+```
+*Note: A 100% pass rate is mandatory for code integration into the main branch.*
+
+---
+
+## 5. Support & Technical Documentation
+
+For operational support, architectural documentation, or incident reporting:
+
+- **Incident Management**: Submit bug reports and feature proposals via the [Issue Tracker](https://github.com/yourusername/Sistem-Pengiktirafan-Kehadiran-Bersepadu-SPKB---Perbadanan-Labuan/issues).
+- **Technical Documentation**: Comprehensive API specifications and system architectures are maintained in the central IT documentation repository.
+- **Escalation**: For critical system failures or deployment authorizations, contact the **Perbadanan Labuan Central IT Division**.
+
+---
+
+## 6. Governance & Contributions
+
+This software is maintained by the **Perbadanan Labuan IT Engineering Team** (Lead: Samastery237). 
+
+**Standard Operating Procedure for Contributions:**
+1. Fork the repository to your secure workspace.
+2. Checkout a designated feature branch utilizing standard nomenclature (`git checkout -b feature/PL-102-description`).
+3. Ensure absolute compliance with the Pytest and Playwright automated testing suites.
+4. Submit a formalized Pull Request detailing architectural changes, security implications, and testing validation.
+
+---
+<div align="center">
+  <small><b>Hak Cipta Terpelihara © 2026 Perbadanan Labuan</b><br>
+  Proprietary and Confidential. Unauthorized distribution or modification is strictly prohibited.</small>
+</div>
