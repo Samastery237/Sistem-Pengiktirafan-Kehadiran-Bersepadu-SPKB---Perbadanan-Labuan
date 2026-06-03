@@ -61,6 +61,9 @@ class AttendanceListView(views.APIView):
         search = request.query_params.get('search', '').strip()
 
         qs = AttendanceRecord.objects.select_related('folder__department').order_by('-timestamp')
+        if hasattr(request, 'user') and request.user.is_authenticated and not request.user.is_superuser and hasattr(request.user, 'admin_profile') and request.user.admin_profile.department:
+            qs = qs.filter(folder__department=request.user.admin_profile.department)
+            
         if folder_id:
             qs = qs.filter(folder_id=folder_id)
         if search:
@@ -85,6 +88,9 @@ class AttendanceListView(views.APIView):
             
         folder_id = request.query_params.get('folder')
         qs = AttendanceRecord.objects.all()
+        if hasattr(request, 'user') and request.user.is_authenticated and not request.user.is_superuser and hasattr(request.user, 'admin_profile') and request.user.admin_profile.department:
+            qs = qs.filter(folder__department=request.user.admin_profile.department)
+
         if folder_id:
             qs = qs.filter(folder_id=folder_id)
 
@@ -97,11 +103,19 @@ class RecordDetailView(views.APIView):
 
     def delete(self, request, record_id):
         record = get_object_or_404(AttendanceRecord, id=record_id)
+        if hasattr(request, 'user') and request.user.is_authenticated and not request.user.is_superuser and hasattr(request.user, 'admin_profile') and request.user.admin_profile.department:
+            if record.folder and record.folder.department != request.user.admin_profile.department:
+                return Response({'status': 'error', 'message': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
+        
         record.delete()
         return Response({'status': 'success'})
 
     def patch(self, request, record_id):
         record = get_object_or_404(AttendanceRecord, id=record_id)
+        if hasattr(request, 'user') and request.user.is_authenticated and not request.user.is_superuser and hasattr(request.user, 'admin_profile') and request.user.admin_profile.department:
+            if record.folder and record.folder.department != request.user.admin_profile.department:
+                return Response({'status': 'error', 'message': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
+                
         serializer = AttendanceRecordSerializer(record, data=request.data, partial=True)
         if serializer.is_valid():
             updated_record = serializer.save()
@@ -131,14 +145,9 @@ class GetParticipantByICView(views.APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        all_records = AttendanceRecord.objects.select_related('folder__department').order_by('-timestamp')
-        matching_ids = []
-        for r in all_records:
-            if re.sub(r'\D', '', r.ic_number) == clean_ic:
-                matching_ids.append(r.id)
-
-        if matching_ids:
-            records = AttendanceRecord.objects.filter(id__in=matching_ids).select_related('folder__department').order_by('-timestamp')
+        records = AttendanceRecord.objects.filter(clean_ic_number=clean_ic).select_related('folder__department').order_by('-timestamp')
+        
+        if records.exists():
             # Return all matching records for the IC
             return Response({
                 'status': 'success',
@@ -174,6 +183,9 @@ class StatsView(views.APIView):
     def get(self, request):
         folder_id = request.query_params.get('folder')
         qs = AttendanceRecord.objects.all()
+        if hasattr(request, 'user') and request.user.is_authenticated and not request.user.is_superuser and hasattr(request.user, 'admin_profile') and request.user.admin_profile.department:
+            qs = qs.filter(folder__department=request.user.admin_profile.department)
+
         if folder_id:
             qs = qs.filter(folder_id=folder_id)
 
@@ -200,7 +212,10 @@ class DepartmentFolderListView(views.APIView):
         return super().get_permissions()
 
     def get(self, request):
-        departments = Department.objects.prefetch_related('folders').all().order_by('name')
+        if hasattr(request, 'user') and request.user.is_authenticated and not request.user.is_superuser and hasattr(request.user, 'admin_profile') and request.user.admin_profile.department:
+            departments = Department.objects.prefetch_related('folders').filter(id=request.user.admin_profile.department.id).order_by('name')
+        else:
+            departments = Department.objects.prefetch_related('folders').all().order_by('name')
         data = []
         for d in departments:
             folders = [
@@ -242,7 +257,11 @@ class DepartmentFolderListView(views.APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
             
-        department, _ = Department.objects.get_or_create(name=dept_name)
+        if hasattr(request, 'user') and request.user.is_authenticated and not request.user.is_superuser and hasattr(request.user, 'admin_profile') and request.user.admin_profile.department:
+            department = request.user.admin_profile.department
+        else:
+            department, _ = Department.objects.get_or_create(name=dept_name)
+            
         folder, created = Folder.objects.get_or_create(department=department, name=folder_name)
         
         return Response(
@@ -257,6 +276,8 @@ class DepartmentDetailView(views.APIView):
     
     def delete(self, request, dept_id):
         department = get_object_or_404(Department, id=dept_id)
+        if hasattr(request, 'user') and request.user.is_authenticated and not request.user.is_superuser:
+            return Response({'status': 'error', 'message': 'Only Super Admin can delete departments'}, status=status.HTTP_403_FORBIDDEN)
         department.delete()
         return Response({'status': 'success', 'message': 'Department deleted successfully'})
 
@@ -269,6 +290,9 @@ class FolderDetailView(views.APIView):
     """
     def get(self, request, folder_id):
         folder = get_object_or_404(Folder, id=folder_id)
+        if hasattr(request, 'user') and request.user.is_authenticated and not request.user.is_superuser and hasattr(request.user, 'admin_profile') and request.user.admin_profile.department:
+            if folder.department != request.user.admin_profile.department:
+                return Response({'status': 'error', 'message': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
         return Response({
             'status': 'success',
             'id': folder.id,
@@ -292,6 +316,9 @@ class FolderDetailView(views.APIView):
 
     def patch(self, request, folder_id):
         folder = get_object_or_404(Folder, id=folder_id)
+        if hasattr(request, 'user') and request.user.is_authenticated and not request.user.is_superuser and hasattr(request.user, 'admin_profile') and request.user.admin_profile.department:
+            if folder.department != request.user.admin_profile.department:
+                return Response({'status': 'error', 'message': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
         if 'name' in request.data: folder.name = request.data['name']
         if 'cert_delay' in request.data: folder.cert_delay = int(request.data['cert_delay'])
         if 'cert_template' in request.data: folder.cert_template = request.data['cert_template']
@@ -317,6 +344,9 @@ class FolderDetailView(views.APIView):
 
     def delete(self, request, folder_id):
         folder = get_object_or_404(Folder, id=folder_id)
+        if hasattr(request, 'user') and request.user.is_authenticated and not request.user.is_superuser and hasattr(request.user, 'admin_profile') and request.user.admin_profile.department:
+            if folder.department != request.user.admin_profile.department:
+                return Response({'status': 'error', 'message': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
         folder.delete()
         return Response({'status': 'success'})
 
@@ -331,6 +361,9 @@ class ExportCSVView(views.APIView):
     def get(self, request):
         folder_id = request.query_params.get('folder')
         qs = AttendanceRecord.objects.select_related('folder__department').order_by('-timestamp')
+        if hasattr(request, 'user') and request.user.is_authenticated and not request.user.is_superuser and hasattr(request.user, 'admin_profile') and request.user.admin_profile.department:
+            qs = qs.filter(folder__department=request.user.admin_profile.department)
+
         if folder_id:
             qs = qs.filter(folder_id=folder_id)
 

@@ -21,7 +21,9 @@ urlpatterns = [
     path('auth/login/', auth_views.LoginView.as_view(), name='auth_login'),
     path('auth/logout/', auth_views.LogoutView.as_view(), name='auth_logout'),
     path('auth/check/', auth_views.CheckAuthView.as_view(), name='auth_check'),
-    path('auth/change-password/', auth_views.ChangePasswordView.as_view(), name='auth_change_password'),
+    path('auth/password/', auth_views.ChangePasswordView.as_view(), name='auth_change_password'),
+    path('users/', auth_views.UserListView.as_view(), name='users_list'),
+    path('users/<int:user_id>/', auth_views.UserDetailView.as_view(), name='users_detail'),
 
     # Attendance
     path('submit/', SubmitAttendanceView.as_view(), name='submit_attendance'),

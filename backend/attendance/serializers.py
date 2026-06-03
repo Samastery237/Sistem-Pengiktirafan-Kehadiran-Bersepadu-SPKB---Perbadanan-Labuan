@@ -15,6 +15,23 @@ class AttendanceRecordSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'timestamp', 'certificate_generated', 'folder', 'cert_delay']
 
+    def validate_ic_number(self, value):
+        import re
+        clean_val = re.sub(r'\D', '', value)
+        if len(clean_val) < 12:
+            raise serializers.ValidationError("Nombor IC mestilah sekurang-kurangnya 12 digit tanpa tanda sengkang (-).")
+        if len(clean_val) > 12:
+            raise serializers.ValidationError("Nombor IC tidak sah.")
+        return value
+        
+    def validate_phone(self, value):
+        import re
+        if value:
+            clean_val = re.sub(r'\D', '', value)
+            if len(clean_val) < 9 or len(clean_val) > 15:
+                raise serializers.ValidationError("Sila masukkan nombor telefon yang sah.")
+        return value
+
     def create(self, validated_data):
         department_name = validated_data.pop('department_name', 'General Department')
         folder_name = validated_data.pop('folder_name', 'General Folder')

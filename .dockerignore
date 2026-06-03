@@ -1,0 +1,11 @@
+venv/
+venv_win/
+backend/venv/
+backend/venv_win/
+node_modules/
+__pycache__/
+*.pyc
+.pytest_cache/
+test-results/
+.env
+db.sqlite3

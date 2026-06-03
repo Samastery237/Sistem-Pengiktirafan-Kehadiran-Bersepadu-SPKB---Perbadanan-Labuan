@@ -33,8 +33,14 @@ def serve_frontend(request, filename='index.html'):
     from django.http import Http404
     raise Http404
 
+from django.contrib.auth import views as auth_views
+from django.views.generic import RedirectView
+
 urlpatterns = [
+    path('accounts/login/', RedirectView.as_view(url='/admin/login/', permanent=False)),
+    path('admin/password_reset/', auth_views.PasswordResetView.as_view(), name='admin_password_reset'),
     path('admin/', admin.site.urls),
+    path('accounts/', include('django.contrib.auth.urls')),
     path('api/attendance/', include('attendance.urls')),
 
     # Serve frontend static files

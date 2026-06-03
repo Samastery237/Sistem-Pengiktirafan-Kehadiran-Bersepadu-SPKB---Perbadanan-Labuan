@@ -170,3 +170,49 @@ X_FRAME_OPTIONS = 'DENY'
 # SECURE_SSL_REDIRECT = True
 # SESSION_COOKIE_SECURE = True
 # CSRF_COOKIE_SECURE = True
+
+# ------------------------------------------------------------------------------
+# LOGGING
+# ------------------------------------------------------------------------------
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+        'file': {
+            'class': 'logging.FileHandler',
+            'filename': BASE_DIR / 'django.log',
+        },
+    },
+    'root': {
+        'handlers': ['console', 'file'],
+        'level': 'WARNING',
+    },
+}
+
+# ------------------------------------------------------------------------------
+# SENTRY SDK FOR ALERTS
+# ------------------------------------------------------------------------------
+try:
+    import sentry_sdk
+    from sentry_sdk.integrations.django import DjangoIntegration
+
+    SENTRY_DSN = os.environ.get("SENTRY_DSN")
+    if SENTRY_DSN:
+        sentry_sdk.init(
+            dsn=SENTRY_DSN,
+            integrations=[DjangoIntegration()],
+            traces_sample_rate=1.0,
+            send_default_pii=True
+        )
+except ImportError:
+    pass
+
+# ------------------------------------------------------------------------------
+# EMAIL CONFIGURATION (Development)
+# ------------------------------------------------------------------------------
+# Prints emails (like password resets) directly to the console running the server
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+

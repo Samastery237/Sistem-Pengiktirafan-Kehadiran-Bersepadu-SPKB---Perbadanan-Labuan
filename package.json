@@ -1,0 +1,27 @@
+{
+  "name": "sistem-pengiktirafan-kehadiran-bersepadu-spkb---perbadanan-labuan",
+  "version": "1.0.0",
+  "description": "Platform digital inovatif Perbadanan Labuan yang menyelaraskan pengurusan kehadiran acara, latihan, dan program rasmi secara automatik. Sistem ini mengintegrasikan pemantauan masa nyata dengan penjanaan sijil digital (e-Sijil) bagi memperkasa tadbir urus modal insan yang lebih efisien, telus, dan tanpa kertas.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Samastery237/Sistem-Pengiktirafan-Kehadiran-Bersepadu-SPKB---Perbadanan-Labuan.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Samastery237/Sistem-Pengiktirafan-Kehadiran-Bersepadu-SPKB---Perbadanan-Labuan/issues"
+  },
+  "homepage": "https://github.com/Samastery237/Sistem-Pengiktirafan-Kehadiran-Bersepadu-SPKB---Perbadanan-Labuan#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.60.0"
+  }
+}

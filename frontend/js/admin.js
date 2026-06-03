@@ -9,6 +9,7 @@ let departmentsData = [];
 let currentFolderData = null;
 let cachedRecords = [];
 let selectedParticipant = null;
+let currentUserRole = { is_super: false, department_id: null };
 
 // ═══════════════════════════════════════
 //  AUTH
@@ -57,6 +58,8 @@ async function doLogin() {
     
     if (res.ok && data.status === 'success') {
       if (data.csrfToken) localStorage.setItem('pl_csrf', data.csrfToken);
+      currentUserRole.is_super = data.is_super;
+      currentUserRole.department_id = data.department_id;
       showAdmin();
     } else {
       throw new Error(data.message || 'Log masuk gagal.');
@@ -232,12 +235,23 @@ function showAdmin() {
   document.getElementById('admin-app').classList.add('visible');
   document.getElementById('logout-btn').style.display = 'flex';
   const cpBtn = document.getElementById('btn-open-cp');
-  if (cpBtn) cpBtn.style.display = 'flex';
+  if (cpBtn) {
+    cpBtn.style.display = currentUserRole.is_super ? 'flex' : 'none';
+  }
+  
+  if (currentUserRole.is_super) {
+    document.getElementById('tab-users-btn').style.display = 'inline-block';
+    loadUsers();
+  } else {
+    document.getElementById('tab-users-btn').style.display = 'none';
+  }
   
   // Restore the active tab if it was saved (helps with Live Server auto-reloads)
   const savedTab = localStorage.getItem('active_admin_tab');
-  if (savedTab) {
+  if (savedTab && (savedTab !== 'users' || currentUserRole.is_super)) {
     switchTab(savedTab);
+  } else {
+    switchTab('attendance');
   }
   
   loadHierarchy();
@@ -645,7 +659,7 @@ function exportCSV() {
 
 function switchTab(tab) {
   localStorage.setItem('active_admin_tab', tab); // Persist tab state across reloads
-  ['attendance', 'certificate', 'settings'].forEach(t => {
+  ['attendance', 'certificate', 'settings', 'users'].forEach(t => {
     document.getElementById(`tab-${t}`)?.classList.remove('active');
     document.getElementById(`tab-${t}-btn`)?.classList.remove('active');
   });
@@ -1098,6 +1112,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   try {
     const res = await api('auth/check/', { method: 'GET' });
     if (res && res.status === 'success') {
+      currentUserRole.is_super = res.is_super;
+      currentUserRole.department_id = res.department_id;
       showAdmin();
     }
   } catch (e) {
@@ -1142,5 +1158,118 @@ function togglePasswordVisibility(inputId) {
     input.type = 'password';
     if (eye) eye.style.display = 'block';
     if (eyeOff) eyeOff.style.display = 'none';
+  }
+}
+
+// ═══════════════════════════════════════
+//  USER MANAGEMENT (SUPER ADMIN ONLY)
+// ═══════════════════════════════════════
+
+async function loadUsers() {
+  if (!currentUserRole.is_super) return;
+  try {
+    const res = await api('users/', { method: 'GET' });
+    const tbody = document.getElementById('users-tbody');
+    if (res && res.status === 'success') {
+      tbody.innerHTML = '';
+      res.data.forEach(u => {
+        const role = u.is_super ? '<span style="color:var(--accent);">Super Admin</span>' : 'Admin Jabatan';
+        const dept = u.department_name || '—';
+        const deleteBtn = u.username !== 'admin' ? 
+          `<button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id}, '${u.username}')"><i data-lucide="trash-2"></i></button>` : 
+          '';
+          
+        tbody.innerHTML += `
+          <tr>
+            <td><strong>${u.username}</strong></td>
+            <td>${role}</td>
+            <td>${dept}</td>
+            <td>${deleteBtn}</td>
+          </tr>
+        `;
+      });
+      if (window.lucide) lucide.createIcons();
+    }
+  } catch (e) {
+    console.error('Failed to load users', e);
+  }
+}
+
+function deleteUser(id, username) {
+  openConfirmModal({
+    title: 'Padam Pengguna',
+    message: `Anda pasti ingin memadam pengguna "${username}"?`,
+    confirmText: 'Padam',
+    confirmClass: 'btn-danger',
+    icon: 'trash-2',
+    onConfirm: async () => {
+      try {
+        const res = await api(`users/${id}/`, { method: 'DELETE' });
+        if (res && res.status === 'success') {
+          showToast('<i class="fa-solid fa-check"></i> Pengguna dipadam.', 'success');
+          loadUsers();
+        } else {
+          showToast('<i class="fa-solid fa-xmark"></i> Ralat memadam pengguna: ' + res.message, 'error');
+        }
+      } catch (e) {
+        showToast('<i class="fa-solid fa-xmark"></i> Ralat rangkaian.', 'error');
+      }
+    }
+  });
+}
+
+function openAddUserModal() {
+  document.getElementById('new-user-username').value = '';
+  document.getElementById('new-user-password').value = '';
+  document.getElementById('new-user-role').value = 'false';
+  
+  // Populate departments
+  const deptSelect = document.getElementById('new-user-dept');
+  deptSelect.innerHTML = '<option value="">-- Pilih Jabatan --</option>';
+  departmentsData.forEach(d => {
+    deptSelect.innerHTML += `<option value="${d.id}">${d.name}</option>`;
+  });
+  
+  toggleDeptSelect();
+  document.getElementById('add-user-modal').style.display = 'flex';
+}
+
+function closeAddUserModal() {
+  document.getElementById('add-user-modal').style.display = 'none';
+}
+
+function toggleDeptSelect() {
+  const isSuper = document.getElementById('new-user-role').value === 'true';
+  const deptGroup = document.getElementById('new-user-dept-group');
+  if (isSuper) {
+    deptGroup.style.display = 'none';
+    document.getElementById('new-user-dept').required = false;
+  } else {
+    deptGroup.style.display = 'block';
+    document.getElementById('new-user-dept').required = true;
+  }
+}
+
+async function submitAddUser() {
+  const username = document.getElementById('new-user-username').value;
+  const password = document.getElementById('new-user-password').value;
+  const is_super = document.getElementById('new-user-role').value;
+  const department_id = document.getElementById('new-user-dept').value;
+  
+  try {
+    const res = await api('users/', {
+      method: 'POST',
+      body: { username, password, is_super, department_id }
+    });
+    
+    if (res && res.status === 'success') {
+      showToast('<i class="fa-solid fa-check"></i> Pengguna ditambah.', 'success');
+      closeAddUserModal();
+      loadUsers();
+    } else {
+      showToast('<i class="fa-solid fa-xmark"></i> Ralat: ' + res.message, 'error');
+    }
+  } catch (e) {
+    showToast('<i class="fa-solid fa-xmark"></i> Ralat rangkaian.', 'error');
   }
 }

@@ -128,3 +128,7 @@ backend/test_certificate.pdf
 
 # Security (Never push actual secret keys)
 .env
+# Extra local environments
+venv_win/
+.vscode/
+

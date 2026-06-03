@@ -1,0 +1,22 @@
+
+services:
+  web:
+    # Use a specific image tag for easy rollback (e.g., spkb-web:v1.0.0)
+    # If a deployment fails, simply change the tag back to the previous version and run `docker-compose up -d`
+    image: spkb-web:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: gunicorn backend.wsgi:application --chdir /app/backend --bind 0.0.0.0:8000
+    volumes:
+      - ./backend:/app/backend
+      - ./frontend:/app/frontend
+      - static_volume:/app/staticfiles
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    restart: always
+
+volumes:
+  static_volume:
