@@ -103,7 +103,7 @@ For operational support, architectural documentation, or incident reporting:
 
 ## 6. Governance & Contributions
 
-This software is maintained by the **Perbadanan Labuan IT Engineering Team** (Lead: Samastery237). 
+This software is maintained by the **Perbadanan Labuan IT Engineering Team** (Lead: Samuel Bin Kimti). 
 
 **Standard Operating Procedure for Contributions:**
 1. Fork the repository to your secure workspace.
