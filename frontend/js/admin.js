@@ -360,7 +360,7 @@ function clearCertificateView() {
   const actions = document.getElementById('cert-actions');
   if (actions) actions.style.display = 'none';
   const empty = document.getElementById('cert-empty');
-  if (empty) empty.style.display = 'flex';
+  if (empty) empty.style.display = 'block';
 }
 
 function changeDepartment(val) {
