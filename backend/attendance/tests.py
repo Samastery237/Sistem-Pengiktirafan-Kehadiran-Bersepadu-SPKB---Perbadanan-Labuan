@@ -74,3 +74,38 @@ class FullBackendSuite(TestCase):
         response = self.client.get(reverse('get_participant', args=['999999999999']))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()['data'][0]['fullname'], 'Integration User')
+
+    def test_security_sql_injection_defense(self):
+        """Simulate a Burp Suite SQLi attack payload on the search API."""
+        # Create a dummy record first
+        AttendanceRecord.objects.create(
+            fullname="Valid User", ic_number="123123123123", phone="012345", folder=self.folder
+        )
+        self.client.login(username='admin', password='password123')
+        
+        # Attack payload: trying to force a TRUE condition
+        malicious_payload = "123123123123' OR '1'='1"
+        response = self.client.get(reverse('get_participant', args=[malicious_payload]))
+        
+        # If the backend is vulnerable to SQLi, it might return all records.
+        # Since Django ORM is secure, it will safely parameterize the string and find 0 matches, returning 404.
+        self.assertEqual(response.status_code, 404)
+
+    def test_security_xss_payload_handling(self):
+        """Simulate a Cross-Site Scripting (XSS) payload submitted in the form."""
+        xss_payload = "<script>alert('Hacked!');</script>"
+        
+        response = self.client.post(reverse('submit_attendance'), data={
+            'fullname': xss_payload,
+            'ic_number': '888888888888',
+            'phone': '0199999999',
+            'department_name': 'IT',
+            'folder_name': 'General'
+        })
+        
+        self.assertEqual(response.status_code, 201)
+        
+        # Verify the database securely stored the literal string without evaluating it
+        record = AttendanceRecord.objects.get(ic_number="888888888888")
+        self.assertEqual(record.fullname, xss_payload)
+
