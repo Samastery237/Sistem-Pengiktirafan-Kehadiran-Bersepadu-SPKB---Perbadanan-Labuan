@@ -57,4 +57,8 @@ jobs:
 
     - name: 🖥️ Run Playwright E2E UI Tests
       run: |
+        cd backend
+        python manage.py runserver 127.0.0.1:8000 &
+        sleep 5
+        cd ..
         npx playwright test
