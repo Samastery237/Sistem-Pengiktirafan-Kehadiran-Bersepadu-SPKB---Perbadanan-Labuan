@@ -8,6 +8,7 @@
 [![Deployment](https://img.shields.io/badge/Docker-Enterprise_Ready-2496ED.svg)](https://www.docker.com/)
 [![License](https://img.shields.io/badge/License-Proprietary-red.svg)](#)
 [![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen.svg)]()
+[![SPKB CI/CD Pipeline](https://github.com/Samastery237/Sistem-Pengiktirafan-Kehadiran-Bersepadu-SPKB---Perbadanan-Labuan/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Samastery237/Sistem-Pengiktirafan-Kehadiran-Bersepadu-SPKB---Perbadanan-Labuan/actions/workflows/ci.yml)
 
 *Enterprise-Grade Digital Attendance and Automated e-Certificate Issuance Platform*
 
