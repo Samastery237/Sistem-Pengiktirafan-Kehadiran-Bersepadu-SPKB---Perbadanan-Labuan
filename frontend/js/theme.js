@@ -5,7 +5,6 @@ document.addEventListener("DOMContentLoaded", () => {
     } else {
         document.documentElement.removeAttribute("data-theme");
     }
-    updateThemeIcon(savedTheme);
 });
 
 function toggleTheme() {
@@ -19,9 +18,4 @@ function toggleTheme() {
     }
     
     localStorage.setItem("spkb_theme", newTheme);
-    updateThemeIcon(newTheme);
-}
-
-function updateThemeIcon(theme) {
-    // Icon toggling is now handled purely by CSS using [data-theme="light"]
 }

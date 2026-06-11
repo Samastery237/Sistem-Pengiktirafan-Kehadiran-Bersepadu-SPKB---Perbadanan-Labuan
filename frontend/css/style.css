@@ -127,6 +127,8 @@
   overflow: hidden;
   color: #94A3B8;
   transition: background 0.3s, color 0.3s;
+  user-select: none;
+  -webkit-user-select: none;
 }
 .theme-toggle:hover {
   background: rgba(255,255,255,0.1);
