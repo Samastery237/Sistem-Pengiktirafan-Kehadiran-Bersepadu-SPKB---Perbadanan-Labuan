@@ -102,7 +102,11 @@
     <div class="navbar-links">
       <a href="index.html">Laman Utama</a>
       <a href="form.html" class="active">Daftar Kehadiran</a>
-      <a href="admin.html" style="color: var(--primary-light);"><i data-lucide="shield-check" style="width:14px;height:14px;margin-right:4px;margin-bottom:2px;"></i>Admin</a>
+      <a href="admin.html" class="nav-admin"><i data-lucide="shield-check" style="width:14px;height:14px;margin-right:4px;margin-bottom:2px;"></i>Admin</a>
+      <span class="theme-toggle" onclick="toggleTheme()" id="theme-toggle-btn" title="Toggle Light/Dark Mode">
+        <i data-lucide="sun" class="icon-sun"></i>
+        <i data-lucide="moon" class="icon-moon"></i>
+      </span>
     </div>
   </nav>
 
@@ -260,7 +264,7 @@
     </div>
   </div>
 
-  <footer style="width: 100%; margin-top: auto; background: rgba(255, 255, 255, 0.02); border-top: 1px solid rgba(255, 255, 255, 0.05); padding: 2.5rem 5% 1rem; backdrop-filter: blur(10px);">
+  <footer style="width: 100%; margin-top: auto; background: var(--bg-footer); border-top: 1px solid rgba(255, 255, 255, 0.08); padding: 2.5rem 5% 1rem; backdrop-filter: blur(10px);">
     <div style="max-width: 1200px; margin: 0 auto;">
       <div class="footer-row" style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2rem; align-items: flex-start; text-align: left;">
         
@@ -320,5 +324,6 @@
   <script src="js/form.js?v=3"></script>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script>lucide.createIcons();</script>
+  <script src="js/theme.js"></script>
 </body>
 </html>

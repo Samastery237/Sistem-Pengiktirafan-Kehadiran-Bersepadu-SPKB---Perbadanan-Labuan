@@ -72,6 +72,10 @@
       </div>
     </a>
     <div class="navbar-links" style="display: flex; gap: 0.5rem; align-items: center;">
+      <span class="theme-toggle" onclick="toggleTheme()" id="theme-toggle-btn" title="Toggle Light/Dark Mode">
+        <i data-lucide="sun" class="icon-sun"></i>
+        <i data-lucide="moon" class="icon-moon"></i>
+      </span>
       <button class="btn btn-ghost btn-sm" onclick="openChangePasswordModal()" id="btn-open-cp" style="display:none;" aria-label="Tukar Kata Laluan">
         <i data-lucide="key"></i>
         Tukar Kata Laluan
@@ -95,7 +99,7 @@
         </select>
       </div>
 
-      <div style="display:flex; align-items:center; gap:0.5rem; border-left: 1px solid rgba(255,255,255,0.1); padding-left: 1rem;">
+      <div style="display:flex; align-items:center; gap:0.5rem; border-left: 1px solid var(--border); padding-left: 1rem;">
         <strong style="color:var(--text); font-size: 0.9rem;"><i data-lucide="folder"></i> Folder:</strong>
         <select id="folder-selector" class="form-input" style="width: auto; padding: 0.3rem 2rem 0.3rem 1rem; min-width: 150px; height: 36px; margin: 0;" onchange="changeFolder(this.value)" disabled>
           <option value="">-- Pilih Jabatan Dahulu --</option>
@@ -381,8 +385,8 @@
       <div id="confirm-modal-icon" style="display:flex; justify-content:center; margin-bottom:1rem;">
       </div>
       <h3 id="confirm-modal-title" style="margin-bottom:0.5rem; font-size:1.4rem;"></h3>
-      <p id="confirm-modal-msg" style="color:rgba(255,255,255,0.7); margin-bottom:0.5rem;"></p>
-      <p id="confirm-modal-sub" style="color:rgba(255,255,255,0.5); margin-bottom:2rem; font-size:0.85rem;"></p>
+      <p id="confirm-modal-msg" style="color:var(--text-muted); margin-bottom:0.5rem;"></p>
+      <p id="confirm-modal-sub" style="color:var(--text-muted); margin-bottom:2rem; font-size:0.85rem; opacity: 0.8;"></p>
       <div style="display:flex; justify-content:center; gap:0.8rem; margin-top:1.5rem;">
         <button type="button" id="btn-confirm-cancel" class="btn btn-ghost" onclick="closeConfirmModal()" style="flex:1; justify-content:center;">Batal</button>
         <button type="button" id="btn-confirm-action" onclick="executeConfirmAction()" style="flex:1; justify-content:center;"></button>
@@ -541,5 +545,6 @@
   <script>
     lucide.createIcons();
   </script>
+  <script src="js/theme.js"></script>
 </body>
 </html>

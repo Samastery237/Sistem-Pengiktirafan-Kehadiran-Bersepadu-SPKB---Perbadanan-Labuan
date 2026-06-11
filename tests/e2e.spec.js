@@ -48,4 +48,20 @@ test.describe('SPKB Frontend E2E Suite', () => {
     await expect(page.locator('#stat-total')).not.toBeEmpty();
   });
 
+  test('Theme Toggling works across pages', async ({ page }) => {
+    await page.goto(`${BASE_URL}/index.html`);
+    await page.evaluate(() => localStorage.removeItem('spkb_theme'));
+    
+    // Default should be dark mode (no data-theme="light" attribute)
+    await expect(page.locator('html')).not.toHaveAttribute('data-theme', 'light');
+    
+    // Click toggle to light mode
+    await page.click('#theme-toggle-btn');
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+    
+    // Verify it persists across navigation
+    await page.goto(`${BASE_URL}/form.html`);
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  });
+
 });
