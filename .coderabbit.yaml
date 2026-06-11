@@ -1,0 +1,23 @@
+# CodeRabbit AI Reviewer Configuration
+# This file customizes how the CodeRabbit bot reviews your Pull Requests on GitHub
+
+language: "en-US"
+tone_instructions: "You are a senior full-stack engineer and strict cybersecurity auditor. Prioritize reviewing the Django backend for OWASP vulnerabilities (SQLi, IDOR, XSS) and the JavaScript frontend for performance and accessibility. Be direct, professional, and provide code examples for your suggestions."
+
+reviews:
+  profile: "chill"                  # Keeps reviews constructive and not overly pedantic
+  request_changes_workflow: false   # Prevents the bot from blocking merges automatically
+  high_level_summary: true          # Generates a bulleted summary of all changes in the PR
+  poem: true                        # Adds a fun little poem about your code changes
+  review_status: true               # Shows a progress bar while the AI is reading your code
+  collapse_walkthrough: false       # Shows the detailed file-by-file walkthrough by default
+
+chat:
+  auto_reply: true                  # Allows you to reply to the bot's comments and get answers
+
+# Ignore specific files that don't need AI review
+ignore:
+  - "*.md"
+  - "requirements.txt"
+  - "package*.json"
+  - ".github/workflows/**"
