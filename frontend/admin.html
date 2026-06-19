@@ -63,7 +63,7 @@
   </div>
 
   <!-- Navbar -->
-  <nav class="navbar">
+  <nav class="navbar" style="position: relative; z-index: 99999; backdrop-filter: none; -webkit-backdrop-filter: none;">
     <a href="index.html" class="navbar-brand">
       <img src="https://www.cstcl.com.my/wp-content/uploads/2018/12/Logo-Perbadanan-Labuan.png" alt="Logo Perbadanan Labuan" class="navbar-logo-img">
       <div class="navbar-title">
@@ -71,19 +71,51 @@
         <strong style="font-size: 1.15rem; letter-spacing: 0.02em;">SPKB - Panel Admin</strong>
       </div>
     </a>
-    <div class="navbar-links" style="display: flex; gap: 0.5rem; align-items: center;">
-      <span class="theme-toggle" onclick="toggleTheme()" id="theme-toggle-btn" title="Toggle Light/Dark Mode">
-        <i data-lucide="sun" class="icon-sun"></i>
-        <i data-lucide="moon" class="icon-moon"></i>
-      </span>
-      <button class="btn btn-ghost btn-sm" onclick="openChangePasswordModal()" id="btn-open-cp" style="display:none;" aria-label="Tukar Kata Laluan">
-        <i data-lucide="key"></i>
-        Tukar Kata Laluan
+    <div class="navbar-links" style="display: flex; gap: 0.5rem; align-items: center; position: relative;">
+      
+      <button class="btn btn-ghost btn-sm" onclick="const m = document.getElementById('admin-dropdown-menu'); m.style.display = m.style.display === 'none' ? 'flex' : 'none';" id="admin-settings-btn" aria-label="Tetapan" style="padding: 0.5rem;" title="Tetapan">
+        <i data-lucide="settings" style="margin: 0 !important; top: 0 !important;"></i>
       </button>
-      <button class="btn btn-ghost btn-sm" onclick="confirmLogout()" id="logout-btn" style="display:none;" aria-label="Log Keluar">
-        <i data-lucide="log-out"></i>
-        Log Keluar
-      </button>
+
+      <div id="admin-dropdown-menu" style="display:none; position: absolute; top: calc(100% + 0.5rem); right: 0; background: var(--bg-dark); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: 0 10px 25px rgba(0,0,0,0.5); flex-direction: column; min-width: 220px; overflow: hidden; z-index: 999999;">
+        
+        <style>
+          .theme-icon-container { display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; margin-right: 0.5rem; }
+          .theme-icon-container i, .theme-icon-container svg { width: 18px; height: 18px; }
+          .icon-moon-dd { display: none !important; }
+          .icon-sun-dd { display: block !important; }
+          [data-theme="light"] .icon-moon-dd { display: block !important; }
+          [data-theme="light"] .icon-sun-dd { display: none !important; }
+        </style>
+
+        <button class="btn btn-ghost" onclick="toggleTheme();" style="justify-content: flex-start; border-radius: 0; width: 100%; padding: 0.75rem 1rem; color: var(--text);">
+          <span class="theme-icon-container">
+            <i data-lucide="sun" class="icon-sun-dd"></i>
+            <i data-lucide="moon" class="icon-moon-dd"></i>
+          </span>
+          <span>Tukar Tema</span>
+        </button>
+
+        <button class="btn btn-ghost" onclick="openChangePasswordModal(); document.getElementById('admin-dropdown-menu').style.display='none';" id="btn-open-cp" style="display:none; justify-content: flex-start; border-radius: 0; width: 100%; padding: 0.75rem 1rem; color: var(--text);">
+          <span class="theme-icon-container"><i data-lucide="key"></i></span>
+          <span>Tukar Kata Laluan</span>
+        </button>
+
+        <button class="btn btn-ghost" onclick="confirmLogout(); document.getElementById('admin-dropdown-menu').style.display='none';" id="logout-btn" style="display:none; justify-content: flex-start; border-radius: 0; width: 100%; color: #ef4444; padding: 0.75rem 1rem; border-top: 1px solid var(--border);">
+          <span class="theme-icon-container"><i data-lucide="log-out"></i></span>
+          <span>Log Keluar</span>
+        </button>
+      </div>
+
+      <script>
+        document.addEventListener('click', (e) => {
+          const btn = document.getElementById('admin-settings-btn');
+          const menu = document.getElementById('admin-dropdown-menu');
+          if (btn && menu && !btn.contains(e.target) && !menu.contains(e.target)) {
+            menu.style.display = 'none';
+          }
+        });
+      </script>
     </div>
   </nav>
 

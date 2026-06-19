@@ -534,8 +534,8 @@ function renderAttendance() {
       <td><input type="checkbox" class="row-check" data-id="${r.id}" onchange="updateBulkBar()" /></td>
       <td style="color:var(--text-muted);font-size:0.8rem;">${i + 1}</td>
       <td><strong>${esc(r.fullname)}</strong></td>
-      <td style="font-family:monospace;font-size:0.82rem;">${esc(r.ic_number)}</td>
-      <td style="font-size:0.85rem;">${esc(r.phone)}</td>
+      <td style="font-family:monospace;font-size:0.82rem;color:var(--text-muted);">${esc(r.ic_number) || '—'}</td>
+      <td style="font-size:0.85rem;color:var(--text-muted);">${esc(r.phone) || '—'}</td>
       <td style="font-size:0.82rem;color:var(--text-muted);">${esc(r.email) || '—'}</td>
       <td style="font-size:0.82rem;color:var(--text-muted);">${esc(r.organization) || '—'}</td>
       <td style="font-size:0.82rem;color:var(--text-muted);">${esc(r.folder_name) || '—'}</td>
@@ -1176,7 +1176,7 @@ async function loadUsers() {
         const role = u.is_super ? '<span style="color:var(--accent);">Super Admin</span>' : 'Admin Jabatan';
         const dept = u.department_name || '—';
         const deleteBtn = u.username !== 'admin' ? 
-          `<button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id}, '${u.username}')"><i data-lucide="trash-2"></i></button>` : 
+          `<button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id}, '${u.username}')" style="padding: 0.5rem; display: inline-flex; align-items: center; justify-content: center;"><i data-lucide="trash-2" style="margin: 0 !important; top: 0 !important;"></i></button>` : 
           '';
           
         tbody.innerHTML += `

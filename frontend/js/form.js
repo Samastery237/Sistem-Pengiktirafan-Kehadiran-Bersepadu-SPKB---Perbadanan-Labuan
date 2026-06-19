@@ -116,7 +116,7 @@ async function handleSubmit(e) {
   // Validate
   let valid = true;
   valid = setError('fullname', 'error-fullname', !fullname ? t.errName : '') && valid;
-  valid = setError('ic', 'error-ic', !validateIC(ic) ? t.errIC : '') && valid;
+  valid = setError('ic', 'error-ic', (ic && !validateIC(ic)) ? t.errIC : '') && valid;
   valid = setError('phone', 'error-phone', !validatePhone(phone) ? t.errPhone : '') && valid;
   valid = setError('email', 'error-email', !validateEmail(email) ? t.errEmail : '') && valid;
   valid = setError('organization', 'error-organization', !organization ? t.errOrg : '') && valid;
@@ -196,6 +196,13 @@ async function handleSubmit(e) {
 // ─── Init ───
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('attendance-form').addEventListener('submit', handleSubmit);
+
+  // Set Program Name as Title if provided
+  const programNameEl = document.getElementById('form-program-name');
+  if (programNameEl && FOLDER_NAME && FOLDER_NAME !== 'Program Umum') {
+    programNameEl.textContent = 'Program: ' + FOLDER_NAME;
+    programNameEl.style.display = 'block';
+  }
 
   // Auto-select department from URL if provided
   const programSelect = document.getElementById('organization');

@@ -6,6 +6,8 @@ class AttendanceRecordSerializer(serializers.ModelSerializer):
     department_name = serializers.CharField(write_only=True, allow_blank=True)
     folder_name = serializers.CharField(write_only=True, allow_blank=True)
 
+    ic_number = serializers.CharField(allow_blank=True, required=False)
+
     class Meta:
         model = AttendanceRecord
         fields = [
@@ -16,6 +18,8 @@ class AttendanceRecordSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'timestamp', 'certificate_generated', 'folder', 'cert_delay']
 
     def validate_ic_number(self, value):
+        if not value:
+            return ""
         import re
         clean_val = re.sub(r'\D', '', value)
         if len(clean_val) < 12:

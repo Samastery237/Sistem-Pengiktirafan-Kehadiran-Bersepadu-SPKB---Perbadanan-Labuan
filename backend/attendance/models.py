@@ -43,7 +43,7 @@ class AttendanceRecord(models.Model):
     ref = models.CharField(max_length=100, blank=True, null=True)
     folder = models.ForeignKey(Folder, on_delete=models.CASCADE, related_name='attendances', null=True)
     fullname = models.CharField(max_length=255)
-    ic_number = models.CharField(max_length=50)
+    ic_number = models.CharField(max_length=50, blank=True)
     clean_ic_number = models.CharField(max_length=50, blank=True, null=True, db_index=True)
     phone = models.CharField(max_length=50, blank=True, null=True)
     email = models.EmailField(blank=True, null=True)
