@@ -6,6 +6,29 @@ This file shows the two separate flows for the SPKB system:
 - public client flow
 - admin flow
 
+## Client QR Code Usage Steps
+
+1. Scan the QR code for the specific program using a mobile device.
+2. The QR code opens the SPKB registration page linked to that program.
+3. Confirm the displayed program name and instructions.
+4. Fill in the required personal information and attendance details.
+5. Submit the form to register attendance for the program.
+6. The system validates and saves the attendance record.
+7. A confirmation or success page is displayed.
+
+## Recommended QR Code Flow Chart
+
+```mermaid
+flowchart TD
+    A[Scan Program QR Code] --> B[Open Program Registration Page]
+    B --> C[Confirm Program Name & Instructions]
+    C --> D[Fill in Personal & Attendance Details]
+    D --> E[Submit Attendance Form]
+    E --> F[Backend Validates Data]
+    F --> G[Store Attendance Record]
+    G --> H[Show Confirmation / Success Page]
+```
+
 ## Public Client Flow
 
 ```mermaid
@@ -63,4 +86,4 @@ sequenceDiagram
     Backend->>Database: Fetch data
     Database-->>Backend: Return data
     Backend-->>Frontend: Display admin data
-    ```
+```
