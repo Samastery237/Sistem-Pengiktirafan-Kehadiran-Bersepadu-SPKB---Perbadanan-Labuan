@@ -1,7 +1,6 @@
 /* admin.js — Admin Panel Logic (Django Backend) */
 
-const API_BASE = `http://${window.location.hostname}:8000/api/attendance/`;
-const DEFAULT_PW = 'admin123';
+const API_BASE = `${window.location.protocol}//${window.location.hostname}:8000/api/attendance/`;
 
 let currentDepartmentId = null;
 let currentFolderId = null;
@@ -10,6 +9,7 @@ let currentFolderData = null;
 let cachedRecords = [];
 let selectedParticipant = null;
 let currentUserRole = { is_super: false, department_id: null };
+let _csrfToken = null; // Updated after login/password-change to match server-rotated token
 
 // ═══════════════════════════════════════
 //  AUTH
@@ -37,13 +37,36 @@ async function doLogin() {
   const btn = document.getElementById('login-btn');
   if (btn && btn.disabled) return; // Prevent submission during countdown
 
-  const user = document.getElementById('admin-username')?.value.trim() || 'admin';
+  const user = document.getElementById('admin-username')?.value.trim() || '';
   const pw = document.getElementById('admin-password').value;
-  
+
+  if (!user) {
+    const err = document.getElementById('login-error');
+    err.classList.add('show');
+    err.textContent = 'Sila masukkan ID pengguna.';
+    document.getElementById('admin-username')?.classList.add('error');
+    return;
+  }
+
   try {
+    // Step 1: GET a fresh CSRF token from the login endpoint
+    const csrfRes = await fetch(API_BASE + 'auth/login/', {
+      method: 'GET',
+      credentials: 'include',
+    });
+    if (!csrfRes.ok) {
+      throw new Error('Tidak dapat menghubungi pelayan. Sila cuba lagi.');
+    }
+    const csrfData = await csrfRes.json();
+    const csrfToken = csrfData.csrfToken || getCookie('csrftoken');
+
+    // Step 2: POST login with CSRF token in header
     const res = await fetch(API_BASE + 'auth/login/', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': csrfToken || '',
+      },
       credentials: 'include',
       body: JSON.stringify({ username: user, password: pw })
     });
@@ -54,10 +77,20 @@ async function doLogin() {
       return;
     }
 
+    if (!res.ok) {
+      // Try to parse JSON error, fall back to status text
+      let msg = 'Log masuk gagal.';
+      try {
+        const errData = await res.json();
+        if (errData && errData.message) msg = errData.message;
+      } catch (_) {}
+      throw new Error(msg);
+    }
+
     const data = await res.json();
-    
-    if (res.ok && data.status === 'success') {
-      if (data.csrfToken) localStorage.setItem('pl_csrf', data.csrfToken);
+
+    if (data.status === 'success') {
+      _csrfToken = data.csrfToken || null;
       currentUserRole.is_super = data.is_super;
       currentUserRole.department_id = data.department_id;
       showAdmin();
@@ -116,7 +149,7 @@ async function performLogout(callApi = true) {
   if (callApi) {
     try { await api('auth/logout/', { method: 'POST' }); } catch(e) {}
   }
-  localStorage.removeItem('pl_csrf');
+  localStorage.removeItem('pl_csrf'); // Clean up any legacy CSRF storage
   location.reload();
 }
 
@@ -181,14 +214,26 @@ function confirmNavigateHome() {
   }
 }
 
-// TDD Demonstration: New validation function
+/**
+ * Password validation — must match server-side Django validators:
+ * - Minimum 8 characters
+ * - At least one uppercase letter
+ * - At least one lowercase letter
+ * - At least one digit
+ * - At least one special character
+ */
 window.isValidPassword = function(pwd) {
-  if (!pwd || pwd.length < 6) return false;
-  if (!/\d/.test(pwd)) return false; // must contain at least 1 number
+  if (!pwd || pwd.length < 8) return false;
+  if (!/[A-Z]/.test(pwd)) return false;  // uppercase
+  if (!/[a-z]/.test(pwd)) return false;  // lowercase
+  if (!/\d/.test(pwd)) return false;     // digit
+  if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?`~]/.test(pwd)) return false; // special char
   return true;
 };
 
 function openChangePasswordModal() {
+  const oldPwField = document.getElementById('modal-old-password');
+  if (oldPwField) oldPwField.value = '';
   document.getElementById('modal-new-password').value = '';
   document.getElementById('modal-confirm-password').value = '';
   document.getElementById('modal-pw-status').style.display = 'none';
@@ -200,24 +245,51 @@ function closeChangePasswordModal() {
 }
 
 async function submitChangePassword() {
+  const op = document.getElementById('modal-old-password')?.value || '';
   const np = document.getElementById('modal-new-password').value;
   const cp = document.getElementById('modal-confirm-password').value;
   const el = document.getElementById('modal-pw-status');
-  
+  const submitBtn = document.querySelector('#change-password-modal .btn-primary');
+
+  if (submitBtn && submitBtn.disabled) return;
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.style.opacity = '0.7';
+    submitBtn.style.cursor = 'wait';
+  }
+
+  const resetBtn = () => {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.style.opacity = '1';
+      submitBtn.style.cursor = 'pointer';
+    }
+  };
+
+  if (!op) {
+    el.style.display = 'block'; el.style.color = '#f87171';
+    el.textContent = 'Sila masukkan kata laluan lama.';
+    resetBtn();
+    return;
+  }
   if (!window.isValidPassword(np)) { 
-    el.style.display = 'block'; el.style.color = '#f87171'; 
-    el.textContent = 'Minimum 6 aksara & 1 nombor.'; 
-    return; 
+    el.style.display = 'block'; el.style.color = '#f87171';
+    el.textContent = 'Minimum 8 aksara, huruf besar, huruf kecil, nombor & simbol.';
+    resetBtn();
+    return;
   }
   if (np !== cp) { 
     el.style.display = 'block'; el.style.color = '#f87171'; 
     el.textContent = 'Kata laluan tidak sepadan.'; 
+    resetBtn();
     return; 
   }
   
   try {
-    const res = await api('auth/change-password/', { method: 'POST', body: { new_password: np } });
+    const res = await api('auth/password/', { method: 'POST', body: { old_password: op, new_password: np } });
     if (res.status === 'success') {
+      // Server rotated the CSRF token — clear cached value so next api() call reads fresh cookie
+      _csrfToken = null;
       showToast('<i class="fa-solid fa-circle-check"></i> Kata laluan berjaya ditukar!', 'success');
       closeChangePasswordModal();
     } else {
@@ -227,6 +299,8 @@ async function submitChangePassword() {
   } catch(e) {
     el.style.display = 'block'; el.style.color = '#f87171'; 
     el.textContent = 'Ralat rangkaian.';
+  } finally {
+    resetBtn();
   }
 }
 
@@ -267,8 +341,8 @@ async function api(endpoint, opts = {}) {
   const url = API_BASE + endpoint;
   const config = { headers: { 'Content-Type': 'application/json' }, credentials: 'include', ...opts };
   
-  // Attach CSRF token for mutating requests
-  const csrf = getCookie('csrftoken') || localStorage.getItem('pl_csrf');
+  // Attach CSRF token for mutating requests — prefer rotated token from login
+  const csrf = _csrfToken || getCookie('csrftoken');
   if (csrf && (!opts.method || !['GET', 'HEAD', 'OPTIONS'].includes(opts.method.toUpperCase()))) {
     config.headers['X-CSRFToken'] = csrf;
   }
@@ -283,8 +357,17 @@ async function api(endpoint, opts = {}) {
     }
     return Promise.reject('Unauthorized');
   }
-  
+
   if (endpoint.includes('export')) return res;
+
+  // Guard against non-JSON responses (e.g., HTML error pages)
+  const contentType = res.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    const text = await res.text();
+    console.error(`Non-JSON response from ${endpoint}:`, text.substring(0, 200));
+    throw new Error('Pelayan mengembalikan respons yang tidak sah. Sila cuba lagi.');
+  }
+
   return res.json();
 }
 
@@ -337,7 +420,7 @@ function populateFolders() {
   btnDel.disabled = !currentFolderId;
   
   const dept = departmentsData.find(d => String(d.id) === String(currentDepartmentId));
-  folderSel.innerHTML = '<option value="">-- Pilih Folder --</option>';
+  folderSel.innerHTML = '<option value="">-- Pilih Program --</option>';
   
   if (dept && dept.folders) {
     dept.folders.forEach(f => {
@@ -390,7 +473,7 @@ function changeFolder(val) {
   clearCertificateView();
   refreshData();
   loadSettings();
-  showToast('<i class="fa-solid fa-folder"></i> Folder ditukar.', 'success');
+  showToast('<i class="fa-solid fa-folder"></i> Program ditukar.', 'success');
 }
 
 
@@ -398,7 +481,7 @@ async function createNewFolder() {
   if (!currentDepartmentId) return;
   const dept = departmentsData.find(d => String(d.id) === String(currentDepartmentId));
   openPromptModal({
-    title: `Tambah Folder untuk ${dept.name}`,
+    title: `Tambah Program untuk ${dept.name}`,
     placeholder: 'Nama program/folder baru...',
     confirmText: 'Tambah',
     onConfirm: async (name) => {
@@ -406,7 +489,7 @@ async function createNewFolder() {
       try {
         const res = await api('folders/', { method: 'POST', body: { department: dept.name, folder: name.trim() } });
         if (res.status === 'success') {
-          showToast('<i class="fa-solid fa-circle-check"></i> Folder ditambah!', 'success');
+          showToast('<i class="fa-solid fa-circle-check"></i> Program ditambah!', 'success');
           await loadHierarchy();
           document.getElementById('folder-selector').value = res.folder_id;
           changeFolder(res.folder_id);
@@ -441,22 +524,22 @@ function showShareableLink() {
 
 async function deleteCurrentFolder() {
   if (!currentFolderId) { 
-    openConfirmModal({ isAlert: true, title: 'Perhatian', message: 'Sila pilih folder.', confirmText: 'OK', icon: 'info' }); 
+    openConfirmModal({ isAlert: true, title: 'Perhatian', message: 'Sila pilih program.', confirmText: 'OK', icon: 'info' }); 
     return; 
   }
   
   openConfirmModal({
-    title: 'Padam Folder?',
-    message: 'Adakah anda mahu memadam folder ini dan SEMUA rekod kehadirannya?',
+    title: 'Padam Program?',
+    message: 'Adakah anda mahu memadam program ini dan SEMUA rekod kehadirannya?',
     subMessage: 'Tindakan ini tidak boleh dibatalkan.',
-    confirmText: 'Padam Folder',
+    confirmText: 'Padam Program',
     confirmClass: 'btn-danger',
     icon: 'trash-2',
     onConfirm: async () => {
       try {
         const res = await api(`folders/${currentFolderId}/`, { method: 'DELETE' });
         if (res.status === 'success') {
-          showToast('<i class="fa-solid fa-circle-check"></i> Folder dipadam!', 'success');
+          showToast('<i class="fa-solid fa-circle-check"></i> Program dipadam!', 'success');
           currentFolderId = null;
           currentFolderData = null; // Explicitly clear local memory!
           loadHierarchy();

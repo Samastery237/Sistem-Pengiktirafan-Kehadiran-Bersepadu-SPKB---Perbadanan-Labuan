@@ -1,8 +1,12 @@
+from datetime import timedelta
 from django.db import models
 from django.utils import timezone
 import uuid
 import re
+import secrets
 from django.contrib.auth.models import User
+
+
 class Department(models.Model):
     name = models.CharField(max_length=255, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -63,6 +67,76 @@ class AttendanceRecord(models.Model):
 class AdminProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='admin_profile')
     department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True)
+    email_verified = models.BooleanField(default=False)
+    verified_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return f"{self.user.username} - {self.department.name if self.department else 'Super Admin'}"
+
+
+class FailedLoginAttempt(models.Model):
+    """Tracks failed login attempts for account lockout."""
+    username = models.CharField(max_length=150, db_index=True)
+    ip_address = models.GenericIPAddressField(db_index=True)
+    attempted_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-attempted_at']
+        verbose_name = 'Failed Login Attempt'
+        verbose_name_plural = 'Failed Login Attempts'
+
+    def __str__(self):
+        return f"{self.username} from {self.ip_address} at {self.attempted_at}"
+
+
+class UserAccountLock(models.Model):
+    """Tracks account lockout state per user."""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='account_lock')
+    locked_until = models.DateTimeField(null=True, blank=True)
+    failure_count = models.IntegerField(default=0)
+    last_failure_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = 'User Account Lock'
+        verbose_name_plural = 'User Account Locks'
+
+    def __str__(self):
+        return f"{self.user.username} locked until {self.locked_until}"
+
+    @property
+    def is_locked(self):
+        if self.locked_until is None:
+            return False
+        return timezone.now() < self.locked_until
+
+
+class EmailVerificationToken(models.Model):
+    """Token for verifying new user email addresses."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='email_verification_tokens')
+    token = models.CharField(max_length=64, unique=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    is_used = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Verification for {self.user.username} (used={self.is_used})"
+
+    @property
+    def is_expired(self):
+        return timezone.now() > self.expires_at
+
+    @property
+    def is_valid(self):
+        return not self.is_used and not self.is_expired
+
+    @classmethod
+    def generate_for_user(cls, user, expiry_hours=24):
+        """Generate a new verification token for a user. Invalidates previous tokens."""
+        # Invalidate any existing tokens
+        cls.objects.filter(user=user).update(is_used=True)
+        token = secrets.token_hex(32)
+        expires_at = timezone.now() + timedelta(hours=expiry_hours)
+        return cls.objects.create(user=user, token=token, expires_at=expires_at)

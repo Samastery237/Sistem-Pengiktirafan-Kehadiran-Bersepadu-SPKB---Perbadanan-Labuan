@@ -7,7 +7,7 @@ You can now create and share direct links that automatically enroll participants
 
 ### 1. **Create Your Department Program**
 In the admin panel (`http://localhost:8000/admin.html`):
-- Login as Administrator/admin123
+- Login using your configured superuser credentials
 - Go to any tab (attendance, certificate, or settings)
 - Click "➕ Tambah Program" button in the toolbar
 - Enter your department program name (e.g., "Integrity 2026", "Audit Lerma 2026", "Finance Training 2026")
@@ -153,7 +153,7 @@ Terima kasih.
 - Links do not contain sensitive information - only program identification
 - All form validations and protections still apply (IC format, required fields, etc.)
 - Certificate generation still follows program-specific delays and settings
-- Admin panel access remains protected by Administrator/admin123 login
+- Admin panel access remains protected by your configured credentials
 - No way to access other departments' data through these links
 
 ---

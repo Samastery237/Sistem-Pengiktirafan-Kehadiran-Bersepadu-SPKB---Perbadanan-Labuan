@@ -14,14 +14,23 @@ from .views import (
     FolderDetailView,
     ExportCSVView,
     DepartmentDetailView,
+    HealthCheckView,
+    ImportCSVView,
 )
 
 urlpatterns = [
+    # Health Check (no auth required, must be first)
+    path('health/', HealthCheckView.as_view(), name='health_check'),
+
     # Auth
     path('auth/login/', auth_views.LoginView.as_view(), name='auth_login'),
     path('auth/logout/', auth_views.LogoutView.as_view(), name='auth_logout'),
     path('auth/check/', auth_views.CheckAuthView.as_view(), name='auth_check'),
     path('auth/password/', auth_views.ChangePasswordView.as_view(), name='auth_change_password'),
+    path('auth/verify-email/<str:token>/', auth_views.VerifyEmailView.as_view(), name='auth_verify_email'),
+    path('auth/resend-verification/', auth_views.ResendVerificationView.as_view(), name='auth_resend_verification'),
+    path('auth/reset-password/', auth_views.PasswordResetRequestView.as_view(), name='auth_reset_password'),
+    path('auth/reset-password/confirm/', auth_views.PasswordResetConfirmView.as_view(), name='auth_reset_password_confirm'),
     path('users/', auth_views.UserListView.as_view(), name='users_list'),
     path('users/<int:user_id>/', auth_views.UserDetailView.as_view(), name='users_detail'),
 
@@ -40,6 +49,7 @@ urlpatterns = [
     # Stats & Export
     path('stats/', StatsView.as_view(), name='stats'),
     path('export/', ExportCSVView.as_view(), name='export_csv'),
+    path('import/', ImportCSVView.as_view(), name='import_csv'),
 
     # Certificate
     path('download-certificate/<uuid:record_id>/', DownloadCertificateView.as_view(), name='download_certificate'),

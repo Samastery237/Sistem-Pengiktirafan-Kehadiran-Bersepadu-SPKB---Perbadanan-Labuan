@@ -28,9 +28,15 @@ SECRET_KEY = os.environ['DJANGO_SECRET_KEY']
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DJANGO_DEBUG', 'False').lower() == 'true'
 
+# Site URL — used in email links for password reset and email verification
+SITE_URL = os.environ.get('SITE_URL', 'http://localhost:8000')
+
 # ALLOWED_HOSTS setting
 ALLOWED_HOSTS_STR = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1')
 ALLOWED_HOSTS = [host.strip() for host in ALLOWED_HOSTS_STR.split(',') if host.strip()]
+# Add testserver for Django test client
+if DEBUG and 'testserver' not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append('testserver')
 
 
 # Application definition
@@ -56,6 +62,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'attendance.middleware.SecurityLoggingMiddleware',
 ]
 
 ROOT_URLCONF = 'backend.urls'
@@ -89,6 +96,14 @@ DATABASES = {
 }
 
 
+# Password hashing — Argon2 is memory-hard and resistant to GPU/ASIC attacks
+PASSWORD_HASHERS = [
+    'django.contrib.auth.hashers.Argon2PasswordHasher',
+    'django.contrib.auth.hashers.PBKDF2PasswordHasher',
+    'django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher',
+    'django.contrib.auth.hashers.BCryptSHA256PasswordHasher',
+]
+
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
 
@@ -98,12 +113,25 @@ AUTH_PASSWORD_VALIDATORS = [
     },
     {
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'OPTIONS': {'min_length': 8},
     },
     {
         'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
     },
     {
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+    },
+    {
+        'NAME': 'attendance.validators.UppercaseValidator',
+    },
+    {
+        'NAME': 'attendance.validators.LowercaseValidator',
+    },
+    {
+        'NAME': 'attendance.validators.DigitValidator',
+    },
+    {
+        'NAME': 'attendance.validators.SpecialCharacterValidator',
     },
 ]
 
@@ -127,7 +155,11 @@ STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # CORS & CSRF settings
-CORS_ALLOWED_ORIGINS = os.environ.get('DJANGO_CORS_ALLOWED_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000,http://127.0.0.1:8000,http://localhost:8000,http://127.0.0.1:5500,http://localhost:5500,http://127.0.0.1:5501,http://localhost:5501').split(',')
+_default_cors = 'http://localhost:3000,http://127.0.0.1:3000,http://127.0.0.1:8000,http://localhost:8000,http://127.0.0.1:5500,http://localhost:5500,http://127.0.0.1:5501,http://localhost:5501'
+if not DEBUG:
+    # In production, only allow explicitly configured origins — no defaults
+    _default_cors = ''
+CORS_ALLOWED_ORIGINS = [o.strip() for o in os.environ.get('DJANGO_CORS_ALLOWED_ORIGINS', _default_cors).split(',') if o.strip()]
 CORS_ALLOW_CREDENTIALS = True
 CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS
 
@@ -150,26 +182,41 @@ REST_FRAMEWORK = {
         'anon': '100/day', # General protection for anonymous endpoints
         'user': '1000/day', # General protection for authenticated users
         'login': '5/minute', # Strict brute-force protection for the login endpoint
-    }
+        # Abuse protections
+        'submit': '200/minute',    # Form submissions (high to allow large events)
+        'generate': '20/hour',     # Heavy PDF generation
+        'create_user': '10/hour',  # Account creation
+        'password_reset': '3/hour',  # Password reset requests
+    },
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 25,
 }
 
 # ------------------------------------------------------------------------------
 # DEPLOYMENT SECURITY HARDENING
 # ------------------------------------------------------------------------------
 # Session Security
-SESSION_COOKIE_AGE = 3600 # 1 hour
+SESSION_COOKIE_AGE = 3600  # 1 hour idle timeout
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 SESSION_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_HTTPONLY = True
+SESSION_SAVE_EVERY_REQUEST = True  # Refresh session timeout on every request
+
+# Password reset tokens expire after 1 hour (default is 3 days which is too long)
+PASSWORD_RESET_TIMEOUT = 3600
 
 # Global Security Headers
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
+SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
 
-# Note: In production over HTTPS, you should also set:
-# SECURE_SSL_REDIRECT = True
-# SESSION_COOKIE_SECURE = True
-# CSRF_COOKIE_SECURE = True
+# CSRF cookie must be readable by JavaScript to send in X-CSRFToken header
+CSRF_COOKIE_HTTPONLY = False
+CSRF_COOKIE_SAMESITE = 'Lax'
+
+# Require email verification for new accounts
+EMAIL_VERIFICATION_REQUIRED = True
 
 # ------------------------------------------------------------------------------
 # LOGGING
@@ -177,6 +224,12 @@ X_FRAME_OPTIONS = 'DENY'
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+    },
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
@@ -184,6 +237,24 @@ LOGGING = {
         'file': {
             'class': 'logging.FileHandler',
             'filename': BASE_DIR / 'django.log',
+        },
+        'security_file': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': BASE_DIR / 'security.log',
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        'django.request': {
+            'handlers': ['console', 'security_file'],
+            'level': 'WARNING',
+            'propagate': False,
+        },
+        'security': {
+            'handlers': ['console', 'security_file'],
+            'level': 'INFO',
+            'propagate': False,
         },
     },
     'root': {
@@ -205,16 +276,29 @@ try:
             dsn=SENTRY_DSN,
             integrations=[DjangoIntegration()],
             traces_sample_rate=1.0,
-            send_default_pii=True
+            send_default_pii=False  # Never send PII to third-party services
         )
 except ImportError:
     pass
 
 # ------------------------------------------------------------------------------
-# EMAIL CONFIGURATION (Development)
+# EMAIL CONFIGURATION
 # ------------------------------------------------------------------------------
-# Prints emails (like password resets) directly to the console running the server
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+# In development (DEBUG=True), emails are printed to the console.
+# In production, emails are sent via SMTP. Set environment variables to configure.
+if DEBUG:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+else:
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
+    EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '587'))
+    EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+    EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+    EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True').lower() == 'true'
+    EMAIL_USE_SSL = os.environ.get('EMAIL_USE_SSL', 'False').lower() == 'true'
+    EMAIL_TIMEOUT = int(os.environ.get('EMAIL_TIMEOUT', '10'))
+    DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@spkb-labuan.gov.my')
+    ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', '')
 
 # ==============================================================================
 # PRODUCTION SECURITY SETTINGS

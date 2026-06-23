@@ -35,8 +35,8 @@ http://localhost:8000/admin.html
 ### 3. Login Credentials
 The admin panel uses its own authentication system (separate from Django admin):
 
-**Username:** `Administrator` (exact case-sensitive)
-**Password:** `admin123` (this is the default password)
+**Username:** `admin` (or whatever you set as DJANGO_SUPERUSER_USERNAME in `.env`)
+**Password:** As configured in your `.env` file (`DJANGO_SUPERUSER_PASSWORD`). If you did not set this before running `reset_db.py`, the default password might have been set to something else, or superuser creation was skipped.
 
 ### 4. First-Time Setup
 If this is your first time accessing the admin panel:
@@ -57,8 +57,8 @@ If this is your first time accessing the admin panel:
 - Verify the API_BASE in `js/admin.js` is set to `'http://localhost:8000/api/attendance/'`
 
 #### If login fails:
-- Username must be exactly `Administrator` (capital A)
-- Password must be exactly `admin123` (unless you've changed it via the password change feature)
+- Username must match your `DJANGO_SUPERUSER_USERNAME` (default is `admin`)
+- Password must match your `DJANGO_SUPERUSER_PASSWORD`
 - Make sure caps lock is off
 
 #### If you want to change the password:
@@ -80,7 +80,7 @@ This system has two admin interfaces:
 
 2. **Custom SPKB Admin Panel** (the one we fixed):
    - URL: `http://localhost:8000/admin.html`
-   - Uses username: `Administrator`, password: `admin123`
+   - Uses username: `admin` (or your configured username), password: As configured in `.env`
    - Designed specifically for SPKB attendance management
    - Includes certificate generation, program management, and attendance tracking
 

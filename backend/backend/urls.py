@@ -18,29 +18,32 @@ from django.contrib import admin
 from django.urls import path, include
 from django.views.generic import RedirectView
 from django.conf import settings
-from django.http import FileResponse
+from django.http import FileResponse, Http404
 import os
 
 FRONTEND_DIR = os.path.join(settings.BASE_DIR.parent, 'frontend')
 
 def serve_frontend(request, filename='index.html'):
-    filepath = os.path.join(FRONTEND_DIR, filename)
+    # Path traversal defense: reject any '..' or absolute path components
+    if '..' in filename or filename.startswith('/') or filename.startswith('\\'):
+        raise Http404
+    filepath = os.path.normpath(os.path.join(FRONTEND_DIR, filename))
+    # Ensure the resolved path is still within FRONTEND_DIR
+    if not filepath.startswith(os.path.normpath(FRONTEND_DIR)):
+        raise Http404
     if os.path.isfile(filepath):
         content_type = 'text/html'
         if filename.endswith('.css'): content_type = 'text/css'
         elif filename.endswith('.js'): content_type = 'application/javascript'
         return FileResponse(open(filepath, 'rb'), content_type=content_type)
-    from django.http import Http404
     raise Http404
 
 from django.contrib.auth import views as auth_views
-from django.views.generic import RedirectView
 
 urlpatterns = [
     path('accounts/login/', RedirectView.as_view(url='/admin/login/', permanent=False)),
     path('admin/password_reset/', auth_views.PasswordResetView.as_view(), name='admin_password_reset'),
     path('admin/', admin.site.urls),
-    path('accounts/', include('django.contrib.auth.urls')),
     path('api/attendance/', include('attendance.urls')),
 
     # Serve frontend static files
