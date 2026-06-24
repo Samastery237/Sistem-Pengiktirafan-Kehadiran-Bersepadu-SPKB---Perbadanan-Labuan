@@ -36,13 +36,15 @@ test.describe('SPKB Frontend E2E Suite', () => {
   test('Admin Login and Dashboard', async ({ page }) => {
     await page.goto(`${BASE_URL}/admin.html`);
     
-    // Ensure clean state
-    await page.goto(`${BASE_URL}/api/attendance/auth/logout/`);
-    await page.goto(`${BASE_URL}/admin.html`);
-    
     await page.fill('#admin-username', 'admin');
     await page.fill('#admin-password', 'admin123');
+    
+    // Wait for the login API response
+    const responsePromise = page.waitForResponse(response => 
+      response.url().includes('auth/login/') && response.status() === 200
+    );
     await page.click('#login-btn');
+    await responsePromise;
     
     await expect(page.locator('#admin-app')).toHaveClass(/.*visible.*/, { timeout: 10000 });
     await expect(page.locator('#stat-total')).not.toBeEmpty();

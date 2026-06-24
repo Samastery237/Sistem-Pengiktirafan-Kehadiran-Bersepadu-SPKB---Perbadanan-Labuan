@@ -58,7 +58,7 @@ jobs:
     - name: 🖥️ Run Playwright E2E UI Tests
       run: |
         cd backend
-        python manage.py shell -c "from django.contrib.auth.models import User; User.objects.filter(username='admin').exists() or User.objects.create_superuser('admin', 'admin@example.com', 'admin123')"
+        python manage.py shell -c "from django.contrib.auth.models import User; User.objects.filter(username='admin').exists() or User.objects.create_superuser('admin', 'admin@example.com', 'admin123'); from attendance.models import Department; Department.objects.get_or_create(name='Jabatan Hal Ehwal Korporat')"
         python manage.py runserver 127.0.0.1:8000 &
         sleep 5
         cd ..
