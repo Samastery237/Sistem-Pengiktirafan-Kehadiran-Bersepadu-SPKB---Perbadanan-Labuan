@@ -194,8 +194,9 @@ async function handleSubmit(e) {
 }
 
 // ─── Init ───
-document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('attendance-form').addEventListener('submit', handleSubmit);
+if (typeof document !== 'undefined') {
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('attendance-form').addEventListener('submit', handleSubmit);
 
   // Set Program Name as Title if provided
   const programNameEl = document.getElementById('form-program-name');
@@ -240,7 +241,8 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById(`error-${id}`)?.classList.remove('show');
     });
   });
-});
+  });
+}
 
 // Export for testing
 if (typeof module !== 'undefined' && module.exports) {
