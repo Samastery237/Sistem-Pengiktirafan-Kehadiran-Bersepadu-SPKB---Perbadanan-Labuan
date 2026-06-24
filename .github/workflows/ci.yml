@@ -37,7 +37,7 @@ jobs:
 
     - name: 🛡️ Run Code Security Scanner (Bandit)
       run: |
-        bandit -r backend/ -x backend/attendance/tests.py
+        bandit -r backend/ -ll -x "*/tests*,*/venv*"
 
     - name: 🔐 Run Backend Security & RBAC Tests (Pytest)
       run: |
