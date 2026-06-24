@@ -63,3 +63,22 @@ jobs:
         sleep 5
         cd ..
         npx playwright test
+
+  deploy-to-production:
+    needs: test-and-secure
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    
+    steps:
+    - name: 🚀 Deploy to Production Server
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.PROD_SERVER_IP }}
+        username: ${{ secrets.PROD_SERVER_USER }}
+        key: ${{ secrets.PROD_SSH_KEY }}
+        script: |
+          cd /var/www/SPKB
+          git pull origin main
+          docker compose -f docker-compose.yml up -d --build
+          docker compose exec -w /app/backend -T web python manage.py migrate
+          docker compose exec -w /app/backend -T web python manage.py collectstatic --noinput
