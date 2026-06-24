@@ -1,0 +1,1662 @@
+"""
+Comprehensive TDD tests for SPKB Attendance System views.
+Tests all view classes including submission, list, detail, stats,
+folder management, CSV export/import, certificates, and health check.
+"""
+import csv
+import io
+import json
+import uuid
+from datetime import timedelta
+from unittest.mock import patch, MagicMock
+
+from django.contrib.auth.models import User
+from django.test import TestCase
+from django.urls import reverse
+from django.utils import timezone
+from rest_framework import status
+
+from attendance.models import AdminProfile, AttendanceRecord, Department, Folder
+from attendance.tests import DisableThrottleMixin
+
+
+BROWSER_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+
+
+# ══════════════════════════════════════════════════════════════
+# 1. SubmitAttendanceView Tests
+# ══════════════════════════════════════════════════════════════
+
+
+class TestSubmitAttendanceView(DisableThrottleMixin, TestCase):
+    """TDD: SubmitAttendanceView (POST, AllowAny) tests."""
+
+    def setUp(self):
+        self.url = reverse('submit_attendance')
+        self.dept = Department.objects.create(name="IT")
+        self.folder = Folder.objects.create(department=self.dept, name="General")
+
+    def test_valid_submission_returns_201(self):
+        """Valid POST should return 201 with record_id and public data."""
+        response = self.client.post(self.url, data={
+            'fullname': 'Ahmad bin Ali',
+            'ic_number': '123456789012',
+            'phone': '0123456789',
+            'email': 'ahmad@test.com',
+            'organization': 'Org A',
+            'department_name': 'IT',
+            'folder_name': 'General',
+        }, HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        data = response.json()
+        self.assertEqual(data['status'], 'success')
+        self.assertIn('record_id', data)
+        self.assertIn('data', data)
+
+    def test_submission_response_has_no_pii(self):
+        """Public response should not contain PII (fullname, phone, email, IC)."""
+        response = self.client.post(self.url, data={
+            'fullname': 'Secret Person',
+            'ic_number': '987654321098',
+            'phone': '0199999999',
+            'email': 'secret@test.com',
+            'department_name': 'IT',
+            'folder_name': 'General',
+        }, HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        data = response.json()
+        public_data = data['data']
+        self.assertNotIn('fullname', public_data)
+        self.assertNotIn('phone', public_data)
+        self.assertNotIn('email', public_data)
+        self.assertNotIn('ic_number', public_data)
+
+    def test_invalid_missing_fullname_returns_400(self):
+        """Missing fullname should return 400."""
+        response = self.client.post(self.url, data={
+            'ic_number': '123456789012',
+            'phone': '0123456789',
+            'department_name': 'IT',
+            'folder_name': 'General',
+        }, HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.json()['status'], 'error')
+
+    def test_invalid_empty_fullname_returns_400(self):
+        """Empty fullname should return 400."""
+        response = self.client.post(self.url, data={
+            'fullname': '',
+            'ic_number': '123456789012',
+            'phone': '0123456789',
+            'department_name': 'IT',
+            'folder_name': 'General',
+        }, HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_ic_number_cleaning_on_submit(self):
+        """IC number with dashes should be cleaned and stored correctly."""
+        response = self.client.post(self.url, data={
+            'fullname': 'IC Test',
+            'ic_number': '850101-14-5678',
+            'phone': '0123456789',
+            'department_name': 'IT',
+            'folder_name': 'General',
+        }, HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        record = AttendanceRecord.objects.latest('timestamp')
+        self.assertEqual(record.clean_ic_number, '850101145678')
+
+    def test_department_folder_auto_creation(self):
+        """New department and folder should be auto-created on submission."""
+        response = self.client.post(self.url, data={
+            'fullname': 'New Dept User',
+            'ic_number': '112233445566',
+            'phone': '01122334455',
+            'department_name': 'Finance',
+            'folder_name': 'Workshop 2025',
+        }, HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(Department.objects.filter(name='Finance').exists())
+        self.assertTrue(Folder.objects.filter(name='Workshop 2025').exists())
+
+    def test_invalid_ic_too_short_returns_400(self):
+        """IC number with less than 12 digits should return 400."""
+        response = self.client.post(self.url, data={
+            'fullname': 'Short IC',
+            'ic_number': '12345',
+            'phone': '0123456789',
+            'department_name': 'IT',
+            'folder_name': 'General',
+        }, HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_invalid_phone_returns_400(self):
+        """Invalid phone number should return 400."""
+        response = self.client.post(self.url, data={
+            'fullname': 'Phone Test',
+            'ic_number': '123456789012',
+            'phone': 'abc',
+            'department_name': 'IT',
+            'folder_name': 'General',
+        }, HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_no_auth_required(self):
+        """Submit endpoint should be accessible without authentication."""
+        response = self.client.post(self.url, data={
+            'fullname': 'No Auth User',
+            'ic_number': '556677889900',
+            'phone': '01566778899',
+            'department_name': 'IT',
+            'folder_name': 'General',
+        }, HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+
+# ══════════════════════════════════════════════════════════════
+# 2. AttendanceListView Tests
+# ══════════════════════════════════════════════════════════════
+
+
+class TestAttendanceListView(DisableThrottleMixin, TestCase):
+    """TDD: AttendanceListView (GET/DELETE, IsAuthenticated) tests."""
+
+    def setUp(self):
+        self.superuser = User.objects.create_user(
+            username='super', password='TestPass1!'
+        )
+        self.superuser.is_superuser = True
+        self.superuser.save()
+
+        self.dept_a = Department.objects.create(name="DeptA")
+        self.dept_b = Department.objects.create(name="DeptB")
+        self.folder_a = Folder.objects.create(department=self.dept_a, name="FolderA")
+        self.folder_b = Folder.objects.create(department=self.dept_b, name="FolderB")
+
+        self.record_a = AttendanceRecord.objects.create(
+            fullname="UserA", ic_number="111111111111",
+            phone="0111111111", email="a@test.com",
+            folder=self.folder_a
+        )
+        self.record_b = AttendanceRecord.objects.create(
+            fullname="UserB", ic_number="222222222222",
+            phone="0222222222", email="b@test.com",
+            folder=self.folder_b
+        )
+
+        self.client.login(username='super', password='TestPass1!')
+        self.url = reverse('record_list')
+
+    def test_superuser_sees_all_records(self):
+        """Superuser should see all records across departments."""
+        response = self.client.get(self.url, HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertEqual(data['count'], 2)
+
+    def test_non_superuser_sees_only_department_records(self):
+        """Non-superuser should only see records from their own department."""
+        dept_admin = User.objects.create_user(username='deptadmin', password='TestPass1!')
+        AdminProfile.objects.create(user=dept_admin, department=self.dept_a)
+        dept_admin.is_superuser = False
+        dept_admin.save()
+
+        self.client.login(username='deptadmin', password='TestPass1!')
+        response = self.client.get(self.url, HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertEqual(data['count'], 1)
+        self.assertEqual(data['results'][0]['fullname'], 'UserA')
+
+    def test_search_by_fullname(self):
+        """Search by fullname should filter results."""
+        response = self.client.get(self.url + '?search=UserA', HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertEqual(data['count'], 1)
+        self.assertEqual(data['results'][0]['fullname'], 'UserA')
+
+    def test_search_by_ic_number(self):
+        """Search by IC number should filter results."""
+        response = self.client.get(self.url + '?search=222222222222', HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertEqual(data['count'], 1)
+        self.assertEqual(data['results'][0]['fullname'], 'UserB')
+
+    def test_search_by_email(self):
+        """Search by email should filter results."""
+        response = self.client.get(self.url + '?search=b@test.com', HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertEqual(data['count'], 1)
+        self.assertEqual(data['results'][0]['fullname'], 'UserB')
+
+    def test_filter_by_folder_id(self):
+        """Filter by folder_id should return only records in that folder."""
+        response = self.client.get(self.url + f'?folder={self.folder_a.id}', HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertEqual(data['count'], 1)
+        self.assertEqual(data['results'][0]['fullname'], 'UserA')
+
+    def test_pagination_default_page_size(self):
+        """Default page size should be 25."""
+        for i in range(30):
+            AttendanceRecord.objects.create(
+                fullname=f"PagUser{i:03d}",
+                ic_number=f"{i:012d}",
+                phone=f"0123{i:04d}",
+                folder=self.folder_a,
+            )
+        response = self.client.get(self.url, HTTP_USER_AGENT=BROWSER_UA)
+        data = response.json()
+        self.assertEqual(data['count'], 32)
+        self.assertEqual(len(data['results']), 25)
+        self.assertIsNotNone(data['next'])
+        self.assertIsNone(data['previous'])
+
+    def test_pagination_page_2(self):
+        """Page 2 should return remaining records."""
+        for i in range(30):
+            AttendanceRecord.objects.create(
+                fullname=f"PagUser2_{i:03d}",
+                ic_number=f"{i+100:012d}",
+                phone=f"0123{i:04d}",
+                folder=self.folder_a,
+            )
+        response = self.client.get(self.url + '?page=2', HTTP_USER_AGENT=BROWSER_UA)
+        data = response.json()
+        self.assertEqual(data['count'], 32)
+        self.assertEqual(len(data['results']), 7)
+
+    def test_delete_by_ids(self):
+        """DELETE with ids array should delete only those records."""
+        response = self.client.delete(
+            self.url,
+            data=json.dumps({'ids': [str(self.record_a.id)]}),
+            content_type='application/json',
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(AttendanceRecord.objects.filter(id=self.record_a.id).exists())
+        self.assertTrue(AttendanceRecord.objects.filter(id=self.record_b.id).exists())
+
+    def test_delete_by_folder(self):
+        """DELETE with folder param should delete all records in that folder."""
+        response = self.client.delete(
+            self.url + f'?folder={self.folder_a.id}',
+            content_type='application/json',
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(AttendanceRecord.objects.filter(id=self.record_a.id).exists())
+        self.assertTrue(AttendanceRecord.objects.filter(id=self.record_b.id).exists())
+
+    def test_delete_all_no_params(self):
+        """DELETE without params should delete all records (scoped to dept for non-super)."""
+        response = self.client.delete(self.url, HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertEqual(data['deleted'], 2)
+        self.assertEqual(AttendanceRecord.objects.count(), 0)
+
+    def test_unauthenticated_returns_403(self):
+        """Unauthenticated request should return 403."""
+        self.client.logout()
+        response = self.client.get(self.url, HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+# ══════════════════════════════════════════════════════════════
+# 3. RecordDetailView Tests
+# ══════════════════════════════════════════════════════════════
+
+
+class TestRecordDetailView(DisableThrottleMixin, TestCase):
+    """TDD: RecordDetailView (DELETE/PATCH, IsAuthenticated) tests."""
+
+    def setUp(self):
+        self.dept_a = Department.objects.create(name="DeptA")
+        self.dept_b = Department.objects.create(name="DeptB")
+        self.folder_a = Folder.objects.create(department=self.dept_a, name="FolderA")
+        self.folder_b = Folder.objects.create(department=self.dept_b, name="FolderB")
+
+        self.admin_a = User.objects.create_user(username='admin_a', password='TestPass1!')
+        AdminProfile.objects.create(user=self.admin_a, department=self.dept_a)
+        self.admin_a.is_superuser = False
+        self.admin_a.save()
+
+        self.record_a = AttendanceRecord.objects.create(
+            fullname="RecordA", ic_number="111111111111",
+            phone="0111111111", folder=self.folder_a
+        )
+        self.record_b = AttendanceRecord.objects.create(
+            fullname="RecordB", ic_number="222222222222",
+            phone="0222222222", folder=self.folder_b
+        )
+
+    def test_delete_own_record_succeeds(self):
+        """DELETE own department's record should succeed."""
+        self.client.login(username='admin_a', password='TestPass1!')
+        response = self.client.delete(
+            reverse('record_detail', args=[self.record_a.id]),
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(AttendanceRecord.objects.filter(id=self.record_a.id).exists())
+
+    def test_delete_other_department_record_returns_403(self):
+        """DELETE other department's record should return 403."""
+        self.client.login(username='admin_a', password='TestPass1!')
+        response = self.client.delete(
+            reverse('record_detail', args=[self.record_b.id]),
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_patch_own_record_succeeds(self):
+        """PATCH own department's record should succeed."""
+        self.client.login(username='admin_a', password='TestPass1!')
+        response = self.client.patch(
+            reverse('record_detail', args=[self.record_a.id]),
+            data=json.dumps({'fullname': 'Updated Name'}),
+            content_type='application/json',
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.record_a.refresh_from_db()
+        self.assertEqual(self.record_a.fullname, 'Updated Name')
+
+    def test_patch_other_department_record_returns_403(self):
+        """PATCH other department's record should return 403."""
+        self.client.login(username='admin_a', password='TestPass1!')
+        response = self.client.patch(
+            reverse('record_detail', args=[self.record_b.id]),
+            data=json.dumps({'fullname': 'Hacked'}),
+            content_type='application/json',
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_nonexistent_record_returns_404(self):
+        """Accessing non-existent record should return 404."""
+        self.client.login(username='admin_a', password='TestPass1!')
+        fake_id = uuid.uuid4()
+        response = self.client.delete(
+            reverse('record_detail', args=[fake_id]),
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_patch_invalid_data_returns_400(self):
+        """PATCH with invalid IC number should return 400."""
+        self.client.login(username='admin_a', password='TestPass1!')
+        response = self.client.patch(
+            reverse('record_detail', args=[self.record_a.id]),
+            data=json.dumps({'ic_number': 'invalid'}),
+            content_type='application/json',
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_superuser_can_access_any_record(self):
+        """Superuser should be able to PATCH any record regardless of department."""
+        super_admin = User.objects.create_user(username='superadmin', password='TestPass1!')
+        super_admin.is_superuser = True
+        super_admin.save()
+        self.client.login(username='superadmin', password='TestPass1!')
+        response = self.client.patch(
+            reverse('record_detail', args=[self.record_b.id]),
+            data=json.dumps({'fullname': 'Super Updated'}),
+            content_type='application/json',
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.record_b.refresh_from_db()
+        self.assertEqual(self.record_b.fullname, 'Super Updated')
+
+
+# ══════════════════════════════════════════════════════════════
+# 4. GetParticipantByICView Tests
+# ══════════════════════════════════════════════════════════════
+
+
+class TestGetParticipantByICView(DisableThrottleMixin, TestCase):
+    """TDD: GetParticipantByICView (GET, IsAuthenticated) tests."""
+
+    def setUp(self):
+        self.dept_a = Department.objects.create(name="DeptA")
+        self.dept_b = Department.objects.create(name="DeptB")
+        self.folder_a = Folder.objects.create(department=self.dept_a, name="FolderA")
+        self.folder_b = Folder.objects.create(department=self.dept_b, name="FolderB")
+
+        self.record_a = AttendanceRecord.objects.create(
+            fullname="ParticipantA", ic_number="123456789012",
+            phone="0111111111", folder=self.folder_a
+        )
+        self.record_b = AttendanceRecord.objects.create(
+            fullname="ParticipantB", ic_number="123456789012",
+            phone="0222222222", folder=self.folder_b
+        )
+
+        self.admin_a = User.objects.create_user(username='admin_a', password='TestPass1!')
+        AdminProfile.objects.create(user=self.admin_a, department=self.dept_a)
+        self.admin_a.is_superuser = False
+        self.admin_a.save()
+
+    def test_valid_ic_returns_records(self):
+        """Valid IC should return matching records."""
+        self.client.login(username='admin_a', password='TestPass1!')
+        response = self.client.get(
+            reverse('get_participant', args=['123456789012']),
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()['data']
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]['fullname'], 'ParticipantA')
+
+    def test_valid_ic_with_dashes(self):
+        """IC with dashes should be cleaned and matched."""
+        self.client.login(username='admin_a', password='TestPass1!')
+        response = self.client.get(
+            reverse('get_participant', args=['123456-78-9012']),
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()['data']
+        self.assertEqual(len(data), 1)
+
+    def test_invalid_ic_too_short_returns_400(self):
+        """IC with less than 12 digits should return 400."""
+        self.client.login(username='admin_a', password='TestPass1!')
+        response = self.client.get(
+            reverse('get_participant', args=['12345']),
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_invalid_ic_too_long_returns_400(self):
+        """IC with more than 12 digits should return 400."""
+        self.client.login(username='admin_a', password='TestPass1!')
+        response = self.client.get(
+            reverse('get_participant', args=['1234567890123']),
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_nonexistent_ic_returns_404(self):
+        """IC with no matching records should return 404."""
+        self.client.login(username='admin_a', password='TestPass1!')
+        response = self.client.get(
+            reverse('get_participant', args=['999999999999']),
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_department_scoping(self):
+        """Non-superuser should only see records from their own department."""
+        self.client.login(username='admin_a', password='TestPass1!')
+        response = self.client.get(
+            reverse('get_participant', args=['123456789012']),
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()['data']
+        self.assertEqual(len(data), 1)
+        self.assertEqual(data[0]['fullname'], 'ParticipantA')
+
+    def test_superuser_sees_all_matching_records(self):
+        """Superuser should see all records matching IC across departments."""
+        super_admin = User.objects.create_user(username='super', password='TestPass1!')
+        super_admin.is_superuser = True
+        super_admin.save()
+        self.client.login(username='super', password='TestPass1!')
+        response = self.client.get(
+            reverse('get_participant', args=['123456789012']),
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()['data']
+        self.assertEqual(len(data), 2)
+
+    def test_unauthenticated_returns_403(self):
+        """Unauthenticated request should return 403."""
+        response = self.client.get(
+            reverse('get_participant', args=['123456789012']),
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+# ══════════════════════════════════════════════════════════════
+# 5. AttendanceStatusView Tests
+# ══════════════════════════════════════════════════════════════
+
+
+class TestAttendanceStatusView(DisableThrottleMixin, TestCase):
+    """TDD: AttendanceStatusView (GET, AllowAny) tests."""
+
+    def setUp(self):
+        self.dept = Department.objects.create(name="IT")
+        self.folder = Folder.objects.create(department=self.dept, name="General")
+        self.record = AttendanceRecord.objects.create(
+            fullname="Status User", ic_number="123456789012",
+            phone="0123456789", email="status@test.com",
+            folder=self.folder
+        )
+        self.other_dept = Department.objects.create(name="HR")
+        self.other_folder = Folder.objects.create(department=self.other_dept, name="Onboarding")
+        self.other_record = AttendanceRecord.objects.create(
+            fullname="HR Record", ic_number="987654321098",
+            phone="0987654321", folder=self.other_folder
+        )
+
+    def test_authenticated_user_gets_full_record(self):
+        """Authenticated user should get full record data including PII."""
+        user = User.objects.create_user(username='statususer', password='TestPass1!')
+        AdminProfile.objects.create(user=user, department=self.dept)
+        self.client.login(username='statususer', password='TestPass1!')
+        response = self.client.get(
+            reverse('attendance_status', args=[self.record.id]),
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertEqual(data['fullname'], 'Status User')
+        self.assertEqual(data['ic_number'], '123456789012')
+        self.assertEqual(data['phone'], '0123456789')
+        self.assertEqual(data['email'], 'status@test.com')
+
+    def test_unauthenticated_gets_limited_data(self):
+        """Unauthenticated user should get limited data without PII."""
+        response = self.client.get(
+            reverse('attendance_status', args=[self.record.id]),
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertNotIn('fullname', data)
+        self.assertNotIn('phone', data)
+        self.assertNotIn('email', data)
+        self.assertNotIn('ic_number', data)
+        self.assertIn('folder_name', data)
+        self.assertIn('department_name', data)
+
+    def test_nonexistent_record_returns_404(self):
+        """Non-existent record should return 404."""
+        fake_id = uuid.uuid4()
+        response = self.client.get(
+            reverse('attendance_status', args=[fake_id]),
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_cross_department_returns_403(self):
+        """Cross-department access by non-superuser should return 403."""
+        user = User.objects.create_user(username='hradmin', password='TestPass1!')
+        AdminProfile.objects.create(user=user, department=self.other_dept)
+        self.client.login(username='hradmin', password='TestPass1!')
+        response = self.client.get(
+            reverse('attendance_status', args=[self.record.id]),
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_status_includes_folder_positioning_data(self):
+        """Status response should include folder positioning fields."""
+        response = self.client.get(
+            reverse('attendance_status', args=[self.record.id]),
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertIn('cert_delay', data)
+        self.assertIn('cert_template', data)
+        self.assertIn('name_x', data)
+        self.assertIn('name_y', data)
+        self.assertIn('name_size', data)
+        self.assertIn('show_ic', data)
+        self.assertIn('ic_x', data)
+        self.assertIn('ic_y', data)
+        self.assertIn('ic_size', data)
+        self.assertIn('text_color', data)
+        self.assertIn('font_family', data)
+
+
+# ══════════════════════════════════════════════════════════════
+# 6. StatsView Tests
+# ══════════════════════════════════════════════════════════════
+
+
+class TestStatsView(DisableThrottleMixin, TestCase):
+    """TDD: StatsView (GET, IsAuthenticated) tests."""
+
+    def setUp(self):
+        self.superuser = User.objects.create_user(username='super', password='TestPass1!')
+        self.superuser.is_superuser = True
+        self.superuser.save()
+
+        self.dept = Department.objects.create(name="IT")
+        self.folder = Folder.objects.create(department=self.dept, name="General")
+
+        # Create 5 records today
+        for i in range(5):
+            AttendanceRecord.objects.create(
+                fullname=f"TodayUser{i}",
+                ic_number=f"{i:012d}",
+                phone=f"0123{i:04d}",
+                folder=self.folder,
+                timestamp=timezone.now(),
+            )
+
+        # Create 1 record 3 days ago
+        old_time = timezone.now() - timedelta(days=3)
+        AttendanceRecord.objects.create(
+            fullname="OldUser",
+            ic_number="999999999999",
+            phone="0999999999",
+            folder=self.folder,
+            timestamp=old_time,
+        )
+
+        # Mark one as cert generated
+        rec = AttendanceRecord.objects.first()
+        rec.certificate_generated = True
+        rec.save()
+
+        self.client.login(username='super', password='TestPass1!')
+        self.url = reverse('stats')
+
+    def test_stats_returns_total_today_certs(self):
+        """Stats should return total, today, and certs counts."""
+        response = self.client.get(self.url, HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertEqual(data['total'], 6)
+        self.assertEqual(data['today'], 5)
+        self.assertEqual(data['certs'], 1)
+
+    def test_stats_detail_adds_daily_counts(self):
+        """With detail=true, response should include daily_counts."""
+        response = self.client.get(self.url + '?detail=true', HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertIn('daily_counts', data)
+        self.assertEqual(len(data['daily_counts']), 7)
+
+    def test_stats_detail_adds_department_breakdown(self):
+        """With detail=true, response should include department_breakdown."""
+        response = self.client.get(self.url + '?detail=true', HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertIn('department_breakdown', data)
+        self.assertTrue(any(d['name'] == 'IT' for d in data['department_breakdown']))
+
+    def test_stats_certificate_rate_calculated(self):
+        """Certificate rate should be calculated correctly."""
+        response = self.client.get(self.url + '?detail=true', HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertIn('certificate_rate', data)
+        self.assertAlmostEqual(data['certificate_rate'], (1 / 6) * 100, places=1)
+
+    def test_stats_non_superuser_scoped_to_department(self):
+        """Non-superuser stats should be scoped to their department."""
+        other_dept = Department.objects.create(name="HR")
+        other_folder = Folder.objects.create(department=other_dept, name="HRFolder")
+        AttendanceRecord.objects.create(
+            fullname="HR User", ic_number="555555555555",
+            phone="0555555555", folder=other_folder
+        )
+
+        dept_admin = User.objects.create_user(username='deptadmin', password='TestPass1!')
+        AdminProfile.objects.create(user=dept_admin, department=self.dept)
+        dept_admin.is_superuser = False
+        dept_admin.save()
+
+        self.client.login(username='deptadmin', password='TestPass1!')
+        response = self.client.get(self.url, HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertEqual(data['total'], 6)
+
+    def test_stats_filter_by_folder(self):
+        """Stats with folder param should filter to that folder."""
+        response = self.client.get(self.url + f'?folder={self.folder.id}', HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertEqual(data['total'], 6)
+
+    def test_stats_zero_records(self):
+        """Stats with no records should return zeros."""
+        AttendanceRecord.objects.all().delete()
+        response = self.client.get(self.url + '?detail=true', HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertEqual(data['total'], 0)
+        self.assertEqual(data['today'], 0)
+        self.assertEqual(data['certs'], 0)
+        self.assertEqual(data['certificate_rate'], 0.0)
+
+
+# ══════════════════════════════════════════════════════════════
+# 7. DepartmentFolderListView Tests
+# ══════════════════════════════════════════════════════════════
+
+
+class TestDepartmentFolderListView(DisableThrottleMixin, TestCase):
+    """TDD: DepartmentFolderListView (GET/POST, IsAuthenticated) tests."""
+
+    def setUp(self):
+        self.superuser = User.objects.create_user(username='super', password='TestPass1!')
+        self.superuser.is_superuser = True
+        self.superuser.save()
+
+        self.dept_a = Department.objects.create(name="DeptA")
+        self.dept_b = Department.objects.create(name="DeptB")
+        self.folder_a = Folder.objects.create(department=self.dept_a, name="FolderA")
+        self.folder_b = Folder.objects.create(department=self.dept_b, name="FolderB")
+
+        self.client.login(username='super', password='TestPass1!')
+        self.url = reverse('folder_list')
+
+    def test_get_returns_all_departments_for_superuser(self):
+        """Superuser should see all departments and folders."""
+        response = self.client.get(self.url, HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        departments = data.get('data', [])
+        dept_names = [d['name'] for d in departments]
+        self.assertIn('DeptA', dept_names)
+        self.assertIn('DeptB', dept_names)
+
+    def test_non_superuser_sees_only_own_department(self):
+        """Non-superuser should only see their own department."""
+        dept_admin = User.objects.create_user(username='deptadmin', password='TestPass1!')
+        AdminProfile.objects.create(user=dept_admin, department=self.dept_a)
+        dept_admin.is_superuser = False
+        dept_admin.save()
+
+        self.client.login(username='deptadmin', password='TestPass1!')
+        response = self.client.get(self.url, HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        departments = data.get('data', [])
+        dept_names = [d['name'] for d in departments]
+        self.assertIn('DeptA', dept_names)
+        self.assertNotIn('DeptB', dept_names)
+
+    def test_post_creates_folder(self):
+        """POST with valid data should create a new folder."""
+        response = self.client.post(
+            self.url,
+            data=json.dumps({'department': 'NewDept', 'folder': 'NewFolder'}),
+            content_type='application/json',
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertIn(response.status_code, [status.HTTP_200_OK, status.HTTP_201_CREATED])
+        self.assertTrue(Folder.objects.filter(name='NewFolder').exists())
+
+    def test_post_missing_department_returns_400(self):
+        """POST with missing department name should return 400."""
+        response = self.client.post(
+            self.url,
+            data=json.dumps({'folder': 'NewFolder'}),
+            content_type='application/json',
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_post_missing_folder_returns_400(self):
+        """POST with missing folder name should return 400."""
+        response = self.client.post(
+            self.url,
+            data=json.dumps({'department': 'NewDept'}),
+            content_type='application/json',
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_post_empty_body_returns_400(self):
+        """POST with empty body should return 400."""
+        response = self.client.post(
+            self.url,
+            data=json.dumps({}),
+            content_type='application/json',
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_non_superuser_creates_folder_in_own_department(self):
+        """Non-superuser POST should create folder under their own department."""
+        dept_admin = User.objects.create_user(username='deptadmin2', password='TestPass1!')
+        AdminProfile.objects.create(user=dept_admin, department=self.dept_a)
+        dept_admin.is_superuser = False
+        dept_admin.save()
+
+        self.client.login(username='deptadmin2', password='TestPass1!')
+        response = self.client.post(
+            self.url,
+            data=json.dumps({'department': 'HR', 'folder': 'NewFolder'}),
+            content_type='application/json',
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertIn(response.status_code, [status.HTTP_200_OK, status.HTTP_201_CREATED])
+        new_folder = Folder.objects.get(name='NewFolder')
+        self.assertEqual(new_folder.department, self.dept_a)
+
+    def test_unauthenticated_returns_403(self):
+        """Unauthenticated request should return 403."""
+        self.client.logout()
+        response = self.client.get(self.url, HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+# ══════════════════════════════════════════════════════════════
+# 8. DepartmentDetailView Tests
+# ══════════════════════════════════════════════════════════════
+
+
+class TestDepartmentDetailView(DisableThrottleMixin, TestCase):
+    """TDD: DepartmentDetailView (DELETE, IsAuthenticated) tests."""
+
+    def setUp(self):
+        self.dept = Department.objects.create(name="IT")
+        self.folder = Folder.objects.create(department=self.dept, name="General")
+        self.superuser = User.objects.create_user(username='super', password='TestPass1!')
+        self.superuser.is_superuser = True
+        self.superuser.save()
+
+    def test_superuser_can_delete_department(self):
+        """Superuser should be able to delete a department."""
+        self.client.login(username='super', password='TestPass1!')
+        response = self.client.delete(
+            reverse('department_detail', args=[self.dept.id]),
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(Department.objects.filter(id=self.dept.id).exists())
+
+    def test_non_superuser_gets_403(self):
+        """Non-superuser should get 403 when trying to delete."""
+        dept_admin = User.objects.create_user(username='deptadmin', password='TestPass1!')
+        AdminProfile.objects.create(user=dept_admin, department=self.dept)
+        dept_admin.is_superuser = False
+        dept_admin.save()
+
+        self.client.login(username='deptadmin', password='TestPass1!')
+        response = self.client.delete(
+            reverse('department_detail', args=[self.dept.id]),
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_delete_cascades_to_folders(self):
+        """Deleting department should cascade to folders and records."""
+        AttendanceRecord.objects.create(
+            fullname="Test", ic_number="123456789012",
+            phone="0123456789", folder=self.folder
+        )
+        self.client.login(username='super', password='TestPass1!')
+        self.client.delete(
+            reverse('department_detail', args=[self.dept.id]),
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertFalse(Folder.objects.filter(id=self.folder.id).exists())
+        self.assertFalse(AttendanceRecord.objects.filter(folder=self.folder).exists())
+
+    def test_delete_nonexistent_returns_404(self):
+        """Deleting non-existent department should return 404."""
+        self.client.login(username='super', password='TestPass1!')
+        response = self.client.delete(
+            reverse('department_detail', args=[9999]),
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
+# ══════════════════════════════════════════════════════════════
+# 9. FolderDetailView Tests
+# ══════════════════════════════════════════════════════════════
+
+
+class TestFolderDetailView(DisableThrottleMixin, TestCase):
+    """TDD: FolderDetailView (GET/PATCH/DELETE, IsAuthenticated) tests."""
+
+    def setUp(self):
+        self.dept_a = Department.objects.create(name="DeptA")
+        self.dept_b = Department.objects.create(name="DeptB")
+        self.folder_a = Folder.objects.create(
+            department=self.dept_a, name="FolderA",
+            cert_delay=5000, cert_template="tmpl",
+            name_x=100, name_y=200, name_size=36,
+            show_ic=True, ic_x=400, ic_y=500, ic_size=20,
+            text_color="#ff0000", font_family="Times, serif",
+            event_name="Event", event_date="2025-01-01", organizer="Org"
+        )
+        self.folder_b = Folder.objects.create(department=self.dept_b, name="FolderB")
+
+        self.admin_a = User.objects.create_user(username='admin_a', password='TestPass1!')
+        AdminProfile.objects.create(user=self.admin_a, department=self.dept_a)
+        self.admin_a.is_superuser = False
+        self.admin_a.save()
+
+    def test_get_returns_folder_details(self):
+        """GET should return all folder details."""
+        self.client.login(username='admin_a', password='TestPass1!')
+        response = self.client.get(
+            reverse('folder_detail', args=[self.folder_a.id]),
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertEqual(data['name'], 'FolderA')
+        self.assertEqual(data['cert_delay'], 5000)
+        self.assertEqual(data['cert_template'], 'tmpl')
+        self.assertEqual(data['name_x'], 100)
+        self.assertEqual(data['name_y'], 200)
+        self.assertEqual(data['name_size'], 36)
+        self.assertTrue(data['show_ic'])
+        self.assertEqual(data['ic_x'], 400)
+        self.assertEqual(data['ic_y'], 500)
+        self.assertEqual(data['ic_size'], 20)
+        self.assertEqual(data['text_color'], '#ff0000')
+        self.assertEqual(data['font_family'], 'Times, serif')
+        self.assertEqual(data['event_name'], 'Event')
+        self.assertEqual(data['event_date'], '2025-01-01')
+        self.assertEqual(data['organizer'], 'Org')
+
+    def test_patch_updates_folder_fields(self):
+        """PATCH should update folder fields."""
+        self.client.login(username='admin_a', password='TestPass1!')
+        response = self.client.patch(
+            reverse('folder_detail', args=[self.folder_a.id]),
+            data=json.dumps({
+                'name': 'UpdatedFolder',
+                'cert_delay': 10000,
+                'name_x': 150,
+            }),
+            content_type='application/json',
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.folder_a.refresh_from_db()
+        self.assertEqual(self.folder_a.name, 'UpdatedFolder')
+        self.assertEqual(self.folder_a.cert_delay, 10000)
+        self.assertEqual(self.folder_a.name_x, 150)
+
+    def test_patch_show_ic_boolean(self):
+        """PATCH should update show_ic boolean field."""
+        self.client.login(username='admin_a', password='TestPass1!')
+        response = self.client.patch(
+            reverse('folder_detail', args=[self.folder_a.id]),
+            data=json.dumps({'show_ic': False}),
+            content_type='application/json',
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.folder_a.refresh_from_db()
+        self.assertFalse(self.folder_a.show_ic)
+
+    def test_delete_removes_folder(self):
+        """DELETE should remove the folder."""
+        self.client.login(username='admin_a', password='TestPass1!')
+        response = self.client.delete(
+            reverse('folder_detail', args=[self.folder_a.id]),
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(Folder.objects.filter(id=self.folder_a.id).exists())
+
+    def test_cross_department_get_returns_403(self):
+        """Cross-department GET should return 403."""
+        self.client.login(username='admin_a', password='TestPass1!')
+        response = self.client.get(
+            reverse('folder_detail', args=[self.folder_b.id]),
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_cross_department_patch_returns_403(self):
+        """Cross-department PATCH should return 403."""
+        self.client.login(username='admin_a', password='TestPass1!')
+        response = self.client.patch(
+            reverse('folder_detail', args=[self.folder_b.id]),
+            data=json.dumps({'name': 'Hacked'}),
+            content_type='application/json',
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_cross_department_delete_returns_403(self):
+        """Cross-department DELETE should return 403."""
+        self.client.login(username='admin_a', password='TestPass1!')
+        response = self.client.delete(
+            reverse('folder_detail', args=[self.folder_b.id]),
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_nonexistent_folder_returns_404(self):
+        """Accessing non-existent folder should return 404."""
+        self.client.login(username='admin_a', password='TestPass1!')
+        response = self.client.get(
+            reverse('folder_detail', args=[9999]),
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
+# ══════════════════════════════════════════════════════════════
+# 10. ExportCSVView Tests
+# ══════════════════════════════════════════════════════════════
+
+
+class TestExportCSVView(DisableThrottleMixin, TestCase):
+    """TDD: ExportCSVView (GET, IsAuthenticated) tests."""
+
+    def setUp(self):
+        self.dept_a = Department.objects.create(name="ExportA")
+        self.dept_b = Department.objects.create(name="ExportB")
+        self.folder_a = Folder.objects.create(department=self.dept_a, name="FolderA")
+        self.folder_b = Folder.objects.create(department=self.dept_b, name="FolderB")
+
+        self.record_a = AttendanceRecord.objects.create(
+            fullname="ExportUserA", ic_number="111111111111",
+            phone="0111111111", email="a@test.com",
+            organization="OrgA", folder=self.folder_a
+        )
+        self.record_b = AttendanceRecord.objects.create(
+            fullname="ExportUserB", ic_number="222222222222",
+            phone="0222222222", email="b@test.com",
+            organization="OrgB", folder=self.folder_b
+        )
+
+        self.admin_a = User.objects.create_user(username='exportadmin', password='TestPass1!')
+        AdminProfile.objects.create(user=self.admin_a, department=self.dept_a)
+        self.admin_a.is_superuser = False
+        self.admin_a.save()
+
+        self.client.login(username='exportadmin', password='TestPass1!')
+        self.url = reverse('export_csv')
+
+    def test_export_returns_csv(self):
+        """GET should return CSV file with correct content type."""
+        response = self.client.get(self.url, HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response['Content-Type'], 'text/csv')
+
+    def test_export_scoped_to_department(self):
+        """Non-superuser export should only include their department's records."""
+        response = self.client.get(self.url, HTTP_USER_AGENT=BROWSER_UA)
+        content = response.content.decode('utf-8')
+        self.assertIn('ExportUserA', content)
+        self.assertNotIn('ExportUserB', content)
+
+    def test_export_filter_by_folder(self):
+        """Export with ?folder= should filter to that folder."""
+        response = self.client.get(self.url + f'?folder={self.folder_a.id}', HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        content = response.content.decode('utf-8')
+        self.assertIn('ExportUserA', content)
+
+    def test_export_includes_bom(self):
+        """CSV export should include UTF-8 BOM for Excel compatibility."""
+        response = self.client.get(self.url, HTTP_USER_AGENT=BROWSER_UA)
+        self.assertTrue(response.content.startswith(b'\xef\xbb\xbf'))
+
+    def test_export_includes_headers(self):
+        """CSV export should include column headers."""
+        response = self.client.get(self.url, HTTP_USER_AGENT=BROWSER_UA)
+        content = response.content.decode('utf-8')
+        self.assertIn('Ref', content)
+        self.assertIn('Nama Penuh', content)
+
+    def test_superuser_exports_all(self):
+        """Superuser export should include all departments."""
+        super_admin = User.objects.create_user(username='super', password='TestPass1!')
+        super_admin.is_superuser = True
+        super_admin.save()
+        self.client.login(username='super', password='TestPass1!')
+        response = self.client.get(self.url, HTTP_USER_AGENT=BROWSER_UA)
+        content = response.content.decode('utf-8')
+        self.assertIn('ExportUserA', content)
+        self.assertIn('ExportUserB', content)
+
+    def test_unauthenticated_returns_403(self):
+        """Unauthenticated request should return 403."""
+        self.client.logout()
+        response = self.client.get(self.url, HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+# ══════════════════════════════════════════════════════════════
+# 11. DownloadCertificateView Tests
+# ══════════════════════════════════════════════════════════════
+
+
+class TestDownloadCertificateView(DisableThrottleMixin, TestCase):
+    """TDD: DownloadCertificateView (GET, AllowAny) tests."""
+
+    def setUp(self):
+        self.dept = Department.objects.create(name="IT")
+        self.folder = Folder.objects.create(department=self.dept, name="General")
+        self.record = AttendanceRecord.objects.create(
+            fullname="Cert User", ic_number="123456789012",
+            phone="0123456789", folder=self.folder
+        )
+
+    def test_valid_ic_suffix_returns_pdf(self):
+        """With valid IC suffix should return PDF."""
+        with patch('attendance.views._render_to_pdf', return_value=b'fake-pdf-bytes'):
+            response = self.client.get(
+                reverse('download_certificate', args=[self.record.id]) + '?ic=9012',
+                HTTP_USER_AGENT=BROWSER_UA,
+            )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response['Content-Type'], 'application/pdf')
+
+    def test_without_ic_returns_400(self):
+        """Without IC verification should return 400."""
+        response = self.client.get(
+            reverse('download_certificate', args=[self.record.id]),
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_wrong_ic_returns_403(self):
+        """With wrong IC suffix should return 403."""
+        response = self.client.get(
+            reverse('download_certificate', args=[self.record.id]) + '?ic=0000',
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_nonexistent_record_returns_404(self):
+        """Non-existent record should return 404."""
+        fake_id = uuid.uuid4()
+        response = self.client.get(
+            reverse('download_certificate', args=[fake_id]) + '?ic=9012',
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_certificate_sets_generated_flag(self):
+        """Successful download should set certificate_generated flag."""
+        self.assertFalse(self.record.certificate_generated)
+        with patch('attendance.views._render_to_pdf', return_value=b'fake-pdf-bytes'):
+            self.client.get(
+                reverse('download_certificate', args=[self.record.id]) + '?ic=9012',
+                HTTP_USER_AGENT=BROWSER_UA,
+            )
+        self.record.refresh_from_db()
+        self.assertTrue(self.record.certificate_generated)
+
+    def test_pdf_generation_failure_returns_500(self):
+        """If PDF generation fails, should return 500."""
+        with patch('attendance.views._render_to_pdf', return_value=None):
+            response = self.client.get(
+                reverse('download_certificate', args=[self.record.id]) + '?ic=9012',
+                HTTP_USER_AGENT=BROWSER_UA,
+            )
+        self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def test_no_auth_required(self):
+        """Certificate download should be accessible without authentication."""
+        with patch('attendance.views._render_to_pdf', return_value=b'fake-pdf-bytes'):
+            response = self.client.get(
+                reverse('download_certificate', args=[self.record.id]) + '?ic=9012',
+                HTTP_USER_AGENT=BROWSER_UA,
+            )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+
+# ══════════════════════════════════════════════════════════════
+# 12. HealthCheckView Tests
+# ══════════════════════════════════════════════════════════════
+
+
+class TestHealthCheckView(DisableThrottleMixin, TestCase):
+    """TDD: HealthCheckView (GET, AllowAny) tests."""
+
+    def test_health_check_returns_200(self):
+        """GET /health/ should return 200 when DB is connected."""
+        response = self.client.get(reverse('health_check'), HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_health_check_status_ok(self):
+        """Response should contain status='ok'."""
+        response = self.client.get(reverse('health_check'), HTTP_USER_AGENT=BROWSER_UA)
+        data = response.json()
+        self.assertEqual(data['status'], 'ok')
+
+    def test_health_check_db_connected(self):
+        """Response should indicate DB is connected."""
+        response = self.client.get(reverse('health_check'), HTTP_USER_AGENT=BROWSER_UA)
+        data = response.json()
+        self.assertEqual(data['db'], 'connected')
+
+    def test_health_check_has_timestamp(self):
+        """Response should include a timestamp."""
+        response = self.client.get(reverse('health_check'), HTTP_USER_AGENT=BROWSER_UA)
+        data = response.json()
+        self.assertIn('timestamp', data)
+
+    def test_health_check_no_auth_required(self):
+        """Health check should be accessible without authentication."""
+        response = self.client.get(reverse('health_check'), HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_health_check_returns_503_when_db_down(self):
+        """If DB is unreachable, should return 503."""
+        with patch('attendance.views.connection.ensure_connection', side_effect=Exception('DB down')):
+            response = self.client.get(reverse('health_check'), HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
+        data = response.json()
+        self.assertEqual(data['status'], 'error')
+        self.assertEqual(data['db'], 'disconnected')
+
+
+# ══════════════════════════════════════════════════════════════
+# 13. ImportCSVView Tests
+# ══════════════════════════════════════════════════════════════
+
+
+class TestImportCSVView(DisableThrottleMixin, TestCase):
+    """TDD: ImportCSVView (POST, IsAuthenticated) tests."""
+
+    def setUp(self):
+        self.superuser = User.objects.create_user(username='importsuper', password='TestPass1!')
+        self.superuser.is_superuser = True
+        self.superuser.save()
+        self.dept = Department.objects.create(name="ImportDept")
+        self.folder = Folder.objects.create(department=self.dept, name="ImportFolder")
+        self.client.login(username='importsuper', password='TestPass1!')
+        self.url = reverse('import_csv')
+
+    def _make_csv(self, rows):
+        """Helper to create a CSV file-like object."""
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(['fullname', 'ic_number', 'phone', 'email', 'organization'])
+        for row in rows:
+            writer.writerow(row)
+        return io.BytesIO(output.getvalue().encode('utf-8'))
+
+    def test_valid_csv_creates_records(self):
+        """POST with valid CSV should create attendance records."""
+        csv_file = self._make_csv([
+            ['John Doe', '123456789012', '0123456789', 'john@test.com', 'Org1'],
+            ['Jane Smith', '987654321098', '0987654321', 'jane@test.com', 'Org2'],
+        ])
+        response = self.client.post(self.url, {'file': csv_file}, format='multipart')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(AttendanceRecord.objects.count(), 2)
+
+    def test_csv_import_returns_created_count(self):
+        """Response should include count of created records."""
+        csv_file = self._make_csv([
+            ['User1', '111111111111', '0111111111', 'u1@test.com', 'Org'],
+        ])
+        response = self.client.post(self.url, {'file': csv_file}, format='multipart')
+        data = response.json()
+        self.assertEqual(data['created'], 1)
+
+    def test_non_superuser_rejected(self):
+        """Non-superuser should be denied access to import endpoint."""
+        normal_user = User.objects.create_user(username='normal', password='TestPass1!')
+        AdminProfile.objects.create(user=normal_user, department=self.dept)
+        self.client.login(username='normal', password='TestPass1!')
+        csv_file = self._make_csv([['User', '123456789012', '0123456789', 'u@t.com', 'Org']])
+        response = self.client.post(self.url, {'file': csv_file}, format='multipart')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_missing_file_returns_400(self):
+        """POST without a file should return 400."""
+        response = self.client.post(self.url, {}, format='multipart')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_empty_csv_returns_400(self):
+        """An empty CSV file should return 400."""
+        empty = io.BytesIO(b'')
+        response = self.client.post(self.url, {'file': empty}, format='multipart')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_csv_missing_required_columns_returns_400(self):
+        """CSV without required columns should return 400."""
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(['email', 'organization'])
+        writer.writerow(['test@test.com', 'Org'])
+        csv_file = io.BytesIO(output.getvalue().encode('utf-8'))
+        response = self.client.post(self.url, {'file': csv_file}, format='multipart')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_duplicate_ic_skipped(self):
+        """Duplicate IC numbers should not create duplicate records."""
+        AttendanceRecord.objects.create(
+            fullname="Existing", ic_number="123456789012",
+            phone="0123456789", folder=self.folder,
+        )
+        csv_file = self._make_csv([
+            ['Duplicate IC', '123456789012', '0123456789', 'd@test.com', 'Org'],
+        ])
+        response = self.client.post(self.url, {'file': csv_file}, format='multipart')
+        self.assertIn(response.status_code, [status.HTTP_200_OK, status.HTTP_201_CREATED])
+        self.assertEqual(
+            AttendanceRecord.objects.filter(clean_ic_number='123456789012').count(), 1
+        )
+
+    def test_partial_import_returns_errors(self):
+        """CSV with some invalid rows should return partial result with errors."""
+        csv_file = self._make_csv([
+            ['Valid User', '123456789012', '0123456789', 'v@test.com', 'Org'],
+            ['Invalid IC', 'abc', '0123456789', 'i@test.com', 'Org'],
+        ])
+        response = self.client.post(self.url, {'file': csv_file}, format='multipart')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        data = response.json()
+        self.assertEqual(data['created'], 1)
+        self.assertIn('errors', data)
+
+
+# ══════════════════════════════════════════════════════════════
+# 14. AuditLogView Tests
+# ══════════════════════════════════════════════════════════════
+
+
+class TestAuditLogView(DisableThrottleMixin, TestCase):
+    """TDD: AuditLogView (GET, IsAuthenticated) tests."""
+
+    def setUp(self):
+        from pathlib import Path as _P
+        import tempfile
+        from django.conf import settings as _settings
+
+        self.superuser = User.objects.create_user(username='logadmin', password='TestPass1!')
+        self.superuser.is_superuser = True
+        self.superuser.save()
+        self.normal_user = User.objects.create_user(username='normalog', password='TestPass1!')
+        self.dept = Department.objects.create(name="IT")
+        self.folder = Folder.objects.create(department=self.dept, name="General")
+        self.client.login(username='logadmin', password='TestPass1!')
+
+        self._temp_dir = _P(tempfile.mkdtemp())
+        self._log_path = self._temp_dir / 'security.log'
+        self._orig_base_dir = _settings.BASE_DIR
+        _settings.BASE_DIR = self._temp_dir
+
+    def tearDown(self):
+        from django.conf import settings as _settings
+        _settings.BASE_DIR = self._orig_base_dir
+        import shutil
+        try:
+            shutil.rmtree(self._temp_dir, ignore_errors=True)
+        except Exception:
+            pass
+        super().tearDown()
+
+    def _write_log_lines(self, lines):
+        with open(self._log_path, 'w', encoding='utf-8') as f:
+            for line in lines:
+                f.write(line + '\n')
+
+    def test_audit_log_superuser_access(self):
+        """Superuser should be able to access audit log."""
+        self._write_log_lines([
+            'INFO 2024-01-01 12:00:00 LOGIN SUCCESS: User=admin, IP=127.0.0.1',
+        ])
+        response = self.client.get(reverse('audit_log'), HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_audit_log_non_superuser_returns_403(self):
+        """Non-superuser should get 403."""
+        self.client.login(username='normalog', password='TestPass1!')
+        response = self.client.get(reverse('audit_log'), HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_audit_log_returns_entries(self):
+        """Audit log should return parsed entries."""
+        from attendance.views import AuditLogView
+        from rest_framework.test import APIRequestFactory
+        factory = APIRequestFactory()
+        self._write_log_lines([
+            'INFO 2024-01-01 12:00:00 LOGIN SUCCESS: User=admin, IP=127.0.0.1',
+            'WARNING 2024-01-01 12:01:00 LOGIN FAILED: User=bad, IP=10.0.0.1',
+        ])
+        request = factory.get('/api/attendance/audit/')
+        request.user = self.superuser
+        view = AuditLogView.as_view()
+        resp = view(request)
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        data = resp.data
+        self.assertEqual(data['count'], 2)
+        self.assertEqual(len(data['results']), 2)
+
+    def test_audit_log_filters_by_event(self):
+        """?event=LOGIN should filter messages."""
+        from attendance.views import AuditLogView
+        from rest_framework.test import APIRequestFactory
+        factory = APIRequestFactory()
+        self._write_log_lines([
+            'INFO 2024-01-01 12:00:00 LOGIN SUCCESS: User=admin, IP=127.0.0.1',
+            'INFO 2024-01-01 12:01:00 LOGOUT: User=admin, IP=127.0.0.1',
+        ])
+        request = factory.get('/api/attendance/audit/?event=LOGIN')
+        request.user = self.superuser
+        view = AuditLogView.as_view()
+        resp = view(request)
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        data = resp.data
+        self.assertEqual(data['count'], 1)
+        self.assertIn('LOGIN', data['results'][0]['message'])
+
+    def test_audit_log_missing_file_returns_empty(self):
+        """Missing log file should return count 0, not crash."""
+        from attendance.views import AuditLogView
+        from rest_framework.test import APIRequestFactory
+        factory = APIRequestFactory()
+        if self._log_path.exists():
+            self._log_path.unlink()
+        request = factory.get('/api/attendance/audit/')
+        request.user = self.superuser
+        view = AuditLogView.as_view()
+        resp = view(request)
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        data = resp.data
+        self.assertEqual(data['count'], 0)
+        self.assertEqual(data['results'], [])
+
+    def test_audit_log_pagination(self):
+        """Audit log should support pagination via page param."""
+        from attendance.views import AuditLogView
+        from rest_framework.test import APIRequestFactory
+        factory = APIRequestFactory()
+        lines = [
+            f'INFO 2024-01-01 12:{i:02d}:00 LOGIN SUCCESS: User=user{i}'
+            for i in range(30)
+        ]
+        self._write_log_lines(lines)
+        request = factory.get('/api/attendance/audit/?page=2')
+        request.user = self.superuser
+        view = AuditLogView.as_view()
+        resp = view(request)
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        data = resp.data
+        self.assertEqual(data['count'], 30)
+        self.assertEqual(len(data['results']), 5)
+        self.assertIsNone(data['next'])
+        self.assertEqual(data['previous'], 1)
+
+
+# ══════════════════════════════════════════════════════════════
+# 15. Helper Function Tests
+# ══════════════════════════════════════════════════════════════
+
+
+class TestHelperFunctions(DisableThrottleMixin, TestCase):
+    """TDD: Helper functions in views.py."""
+
+    def setUp(self):
+        self.dept = Department.objects.create(name="IT")
+        self.folder = Folder.objects.create(
+            department=self.dept, name="General",
+            cert_delay=5000, cert_template="tmpl",
+            name_x=100, name_y=200, name_size=36,
+            show_ic=True, ic_x=400, ic_y=500, ic_size=20,
+            text_color="#ff0000", font_family="Times, serif",
+        )
+        self.record = AttendanceRecord.objects.create(
+            fullname="Helper Test", ic_number="123456789012",
+            phone="0123456789", email="helper@test.com",
+            organization="TestOrg", folder=self.folder
+        )
+
+    def test_serialize_record_returns_all_fields(self):
+        """_serialize_record should return all fields including PII."""
+        from attendance.views import _serialize_record
+        data = _serialize_record(self.record)
+        self.assertEqual(data['fullname'], 'Helper Test')
+        self.assertEqual(data['ic_number'], '123456789012')
+        self.assertEqual(data['phone'], '0123456789')
+        self.assertEqual(data['email'], 'helper@test.com')
+        self.assertEqual(data['organization'], 'TestOrg')
+        self.assertEqual(data['department_name'], 'IT')
+        self.assertEqual(data['folder_name'], 'General')
+        self.assertEqual(data['cert_delay'], 5000)
+        self.assertEqual(data['cert_template'], 'tmpl')
+        self.assertEqual(data['name_x'], 100)
+        self.assertEqual(data['name_y'], 200)
+        self.assertEqual(data['name_size'], 36)
+        self.assertTrue(data['show_ic'])
+        self.assertEqual(data['ic_x'], 400)
+        self.assertEqual(data['ic_y'], 500)
+        self.assertEqual(data['ic_size'], 20)
+        self.assertEqual(data['text_color'], '#ff0000')
+        self.assertEqual(data['font_family'], 'Times, serif')
+        self.assertIn('timestamp', data)
+        self.assertIn('raw_date', data)
+        self.assertIn('id', data)
+        self.assertIn('ref', data)
+
+    def test_serialize_record_public_strips_pii(self):
+        """_serialize_record_public should strip PII fields."""
+        from attendance.views import _serialize_record_public
+        data = _serialize_record_public(self.record)
+        self.assertNotIn('fullname', data)
+        self.assertNotIn('ic_number', data)
+        self.assertNotIn('phone', data)
+        self.assertNotIn('email', data)
+        self.assertNotIn('organization', data)
+        self.assertIn('folder_name', data)
+        self.assertIn('department_name', data)
+        self.assertIn('timestamp', data)
+        self.assertIn('certificate_generated', data)
+        self.assertEqual(data['folder_name'], 'General')
+        self.assertEqual(data['department_name'], 'IT')
+
+    def test_serialize_record_public_no_folder(self):
+        """_serialize_record_public should handle records without folder."""
+        from attendance.views import _serialize_record_public
+        record_no_folder = AttendanceRecord.objects.create(
+            fullname="No Folder", ic_number="987654321098",
+            phone="0987654321",
+        )
+        data = _serialize_record_public(record_no_folder)
+        self.assertEqual(data['folder_name'], '—')
+        self.assertEqual(data['department_name'], '—')
+
+    def test_enforce_department_filter_scopes_for_non_superuser(self):
+        """_enforce_department_filter should scope queryset for non-superuser."""
+        from attendance.views import _enforce_department_filter
+        from rest_framework.test import APIRequestFactory
+        from django.contrib.auth.models import AnonymousUser
+
+        other_dept = Department.objects.create(name="HR")
+        other_folder = Folder.objects.create(department=other_dept, name="HRFolder")
+        AttendanceRecord.objects.create(
+            fullname="HR Record", ic_number="111111111111",
+            phone="0111111111", folder=other_folder
+        )
+
+        factory = APIRequestFactory()
+        request = factory.get('/')
+
+        admin_user = User.objects.create_user(username='deptadmin', password='TestPass1!')
+        AdminProfile.objects.create(user=admin_user, department=self.dept)
+        request.user = admin_user
+
+        qs = AttendanceRecord.objects.all()
+        filtered_qs = _enforce_department_filter(qs, request)
+        self.assertEqual(filtered_qs.count(), 1)
+        self.assertEqual(filtered_qs.first().fullname, 'Helper Test')
+
+    def test_enforce_department_filter_no_scope_for_superuser(self):
+        """_enforce_department_filter should not scope for superuser."""
+        from attendance.views import _enforce_department_filter
+        from rest_framework.test import APIRequestFactory
+
+        other_dept = Department.objects.create(name="HR2")
+        other_folder = Folder.objects.create(department=other_dept, name="HRFolder2")
+        AttendanceRecord.objects.create(
+            fullname="HR2 Record", ic_number="222222222222",
+            phone="0222222222", folder=other_folder
+        )
+
+        factory = APIRequestFactory()
+        request = factory.get('/')
+
+        super_user = User.objects.create_user(username='super2', password='TestPass1!')
+        super_user.is_superuser = True
+        super_user.save()
+        request.user = super_user
+
+        qs = AttendanceRecord.objects.all()
+        filtered_qs = _enforce_department_filter(qs, request)
+        self.assertEqual(filtered_qs.count(), 2)
+
+    def test_user_department_returns_correct_department(self):
+        """_user_department should return the user's department."""
+        from attendance.views import _user_department
+        from rest_framework.test import APIRequestFactory
+
+        factory = APIRequestFactory()
+        request = factory.get('/')
+
+        admin_user = User.objects.create_user(username='deptuser', password='TestPass1!')
+        AdminProfile.objects.create(user=admin_user, department=self.dept)
+        request.user = admin_user
+
+        result = _user_department(request)
+        self.assertEqual(result, self.dept)
+
+    def test_user_department_returns_none_for_superuser(self):
+        """_user_department should return None for superuser."""
+        from attendance.views import _user_department
+        from rest_framework.test import APIRequestFactory
+
+        factory = APIRequestFactory()
+        request = factory.get('/')
+
+        super_user = User.objects.create_user(username='super3', password='TestPass1!')
+        super_user.is_superuser = True
+        super_user.save()
+        request.user = super_user
+
+        result = _user_department(request)
+        self.assertIsNone(result)
+
+    def test_user_department_returns_none_for_anonymous(self):
+        """_user_department should return None for anonymous user."""
+        from attendance.views import _user_department
+        from rest_framework.test import APIRequestFactory
+        from django.contrib.auth.models import AnonymousUser
+
+        factory = APIRequestFactory()
+        request = factory.get('/')
+        request.user = AnonymousUser()
+
+        result = _user_department(request)
+        self.assertIsNone(result)

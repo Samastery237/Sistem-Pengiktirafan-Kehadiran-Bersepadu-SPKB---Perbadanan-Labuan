@@ -15,6 +15,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 
 import logging
+from .abuse import GlobalIPThrottle
 from .middleware import get_client_ip
 from .models import AdminProfile, Department, EmailVerificationToken, FailedLoginAttempt, UserAccountLock
 
@@ -182,7 +183,7 @@ class LoginView(views.APIView):
     """GET: Return a CSRF token. POST: Authenticate user and create session."""
     authentication_classes = []  # Allow unauthenticated access
     permission_classes = [AllowAny]
-    throttle_classes = [LoginThrottle]
+    throttle_classes = [LoginThrottle, GlobalIPThrottle]
 
     def get(self, request):
         """Return a fresh CSRF token for the login form."""
@@ -514,6 +515,7 @@ class VerifyEmailView(views.APIView):
     """GET: Verify email using token sent via email."""
     authentication_classes = []
     permission_classes = [AllowAny]
+    throttle_classes = [GlobalIPThrottle]
 
     def get(self, request, token):
         try:
@@ -652,6 +654,7 @@ class PasswordResetConfirmView(views.APIView):
     """POST: Confirm password reset with token and set new password."""
     authentication_classes = []
     permission_classes = [AllowAny]
+    throttle_classes = [GlobalIPThrottle]
 
     def post(self, request):
         uid = request.data.get('uid')

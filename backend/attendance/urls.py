@@ -16,6 +16,7 @@ from .views import (
     DepartmentDetailView,
     HealthCheckView,
     ImportCSVView,
+    AuditLogView,
 )
 
 urlpatterns = [
@@ -53,4 +54,7 @@ urlpatterns = [
 
     # Certificate
     path('download-certificate/<uuid:record_id>/', DownloadCertificateView.as_view(), name='download_certificate'),
+
+    # Audit log (superuser only)
+    path('audit/', AuditLogView.as_view(), name='audit_log'),
 ]

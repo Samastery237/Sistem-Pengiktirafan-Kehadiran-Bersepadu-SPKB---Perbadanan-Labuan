@@ -35,6 +35,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.throttling import AnonRateThrottle
 from rest_framework.pagination import PageNumberPagination
 
+from .abuse import AggressiveIPThrottle, GlobalIPThrottle
 from .models import AttendanceRecord, Department, Folder
 from .serializers import AttendanceRecordSerializer
 
@@ -184,7 +185,7 @@ class SubmitAttendanceView(views.APIView):
     """POST: Submit a new attendance record. Public endpoint — no authentication required."""
     authentication_classes = []
     permission_classes = [AllowAny]
-    throttle_classes = [SubmitThrottle]
+    throttle_classes = [SubmitThrottle, AggressiveIPThrottle]
 
     def post(self, request):
         serializer = AttendanceRecordSerializer(data=request.data)
@@ -354,11 +355,10 @@ class AttendanceStatusView(views.APIView):
                 return error
             return Response(_serialize_record(record))
 
-        # Public (unauthenticated) requests get limited data (no phone/email/IC)
+        # Public (unauthenticated) requests get limited data (no PII: no name/phone/email/IC)
         return Response({
             'id': str(record.id),
             'ref': record.ref,
-            'fullname': record.fullname,
             'folder_name': record.folder.name if record.folder else '—',
             'department_name': record.folder.department.name if record.folder and record.folder.department else '—',
             'timestamp': record.timestamp.strftime('%d %B %Y, %I:%M %p'),
@@ -676,16 +676,28 @@ class ExportCSVView(views.APIView):
 # ──────────────────────────────────────────────
 
 class DownloadCertificateView(views.APIView):
-    """GET: Generate and download a certificate PDF for a record. Public endpoint."""
+    """GET: Generate and download a certificate PDF for a record. Public endpoint with IC verification."""
     permission_classes = [AllowAny]
-    throttle_classes = [GenerateThrottle]
+    throttle_classes = [GenerateThrottle, AggressiveIPThrottle]
 
     def get(self, request, record_id):
         record = get_object_or_404(AttendanceRecord, id=record_id)
 
-        if not record.certificate_generated:
-            record.certificate_generated = True
-            record.save(update_fields=['certificate_generated'])
+        # Require the last 4 digits of the participant's IC number to verify identity.
+        # This prevents blind enumeration of certificates by UUID.
+        ic_verify = (request.query_params.get('ic') or '').strip()
+        if not ic_verify or len(ic_verify) < 4:
+            return Response(
+                {'status': 'error', 'message': 'Verification required. Provide ?ic= with the last 4 digits of your IC.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        record_ic_suffix = (record.clean_ic_number or '')[-4:]
+        if not record_ic_suffix or ic_verify[-4:] != record_ic_suffix:
+            return Response(
+                {'status': 'error', 'message': 'IC verification failed.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         context = {
             'fullname': record.fullname.upper(),
@@ -695,6 +707,11 @@ class DownloadCertificateView(views.APIView):
 
         pdf_bytes = _render_to_pdf('certificate.html', context)
         if pdf_bytes:
+            # Only mark as generated after successful PDF creation
+            if not record.certificate_generated:
+                record.certificate_generated = True
+                record.save(update_fields=['certificate_generated'])
+
             filename = f"Sijil_{record.fullname.replace(' ', '_')}.pdf"
             response = HttpResponse(pdf_bytes, content_type='application/pdf')
             response['Content-Disposition'] = f'attachment; filename="{filename}"'
@@ -710,6 +727,7 @@ class HealthCheckView(views.APIView):
     """GET: Return service health status. No authentication required."""
     authentication_classes = []
     permission_classes = [AllowAny]
+    throttle_classes = [GlobalIPThrottle]
 
     def get(self, request):
         try:

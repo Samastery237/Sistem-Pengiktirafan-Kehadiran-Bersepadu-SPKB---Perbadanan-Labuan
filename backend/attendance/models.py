@@ -110,6 +110,25 @@ class UserAccountLock(models.Model):
         return timezone.now() < self.locked_until
 
 
+class AbuseRequestLog(models.Model):
+    """Tracks IP-level request counts for abuse detection and rate limiting."""
+    ip_address = models.GenericIPAddressField(db_index=True)
+    window_start = models.DateTimeField(default=timezone.now)
+    request_count = models.IntegerField(default=1)
+    is_blocked = models.BooleanField(default=False)
+    blocked_until = models.DateTimeField(null=True, blank=True)
+    last_request_path = models.CharField(max_length=500, blank=True)
+    user_agent = models.TextField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-window_start']
+        verbose_name = 'Abuse Request Log'
+        verbose_name_plural = 'Abuse Request Logs'
+
+    def __str__(self):
+        return f"{self.ip_address} ({self.request_count} reqs, blocked={self.is_blocked})"
+
+
 class EmailVerificationToken(models.Model):
     """Token for verifying new user email addresses."""
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='email_verification_tokens')

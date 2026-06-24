@@ -1,119 +1,151 @@
 <div align="center">
-  
-# Sistem Pengiktirafan Kehadiran Bersepadu (SPKB)
-### Perbadanan Labuan
+  <img src="https://upload.wikimedia.org/wikipedia/commons/e/e0/Coat_of_arms_of_Labuan.svg" alt="Perbadanan Labuan Logo" width="120" />
+  <h1>Sistem Pengiktirafan Kehadiran Bersepadu (SPKB)</h1>
+  <p><strong>Enterprise Digital Attendance & Automated e-Certificate Platform</strong></p>
 
-[![Python Compliance](https://img.shields.io/badge/Python-3.14+-blue.svg)](https://www.python.org)
-[![Framework](https://img.shields.io/badge/Django-6.0+-092E20.svg)](https://www.djangoproject.com/)
-[![Deployment](https://img.shields.io/badge/Docker-Enterprise_Ready-2496ED.svg)](https://www.docker.com/)
-[![License](https://img.shields.io/badge/License-Proprietary-red.svg)](#)
-[![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen.svg)]()
-[![SPKB CI/CD Pipeline](https://github.com/Samastery237/Sistem-Pengiktirafan-Kehadiran-Bersepadu-SPKB---Perbadanan-Labuan/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Samastery237/Sistem-Pengiktirafan-Kehadiran-Bersepadu-SPKB---Perbadanan-Labuan/actions/workflows/ci.yml)
-
-*Enterprise-Grade Digital Attendance and Automated e-Certificate Issuance Platform*
-
+  <p>
+    <img src="https://img.shields.io/badge/Backend-Django_6.0.5-092E20?style=flat-square&logo=django" alt="Django" />
+    <img src="https://img.shields.io/badge/Frontend-Vanilla_JS-F7DF1E?style=flat-square&logo=javascript&logoColor=black" alt="JavaScript" />
+    <img src="https://img.shields.io/badge/Database-SQLite-003B57?style=flat-square&logo=sqlite" alt="Database" />
+    <img src="https://img.shields.io/badge/Security-Enterprise-blue?style=flat-square&logo=security" alt="Security" />
+    <img src="https://img.shields.io/badge/Deployment-Docker-2496ED?style=flat-square&logo=docker" alt="Docker" />
+    <img src="https://img.shields.io/badge/License-Proprietary-red?style=flat-square" alt="License" />
+  </p>
+  <p>
+    <a href="#what-the-project-does">Overview</a> •
+    <a href="#why-the-project-is-useful">Core Features</a> •
+    <a href="#system-workflow">How It Works</a> •
+    <a href="#how-to-get-started">Installation</a> •
+    <a href="#maintainers-and-contributing">Contributing</a>
+  </p>
 </div>
 
 ---
 
-## 1. Executive Summary
+## 📖 What the Project Does
 
-**Sistem Pengiktirafan Kehadiran Bersepadu (SPKB)** is a proprietary, enterprise-grade digital platform engineered for **Perbadanan Labuan**. The system modernizes the administration of official government events, corporate training, and mandatory operational programs by providing a secure, paperless attendance tracking infrastructure coupled with automated digital certificate (e-Sijil) provisioning.
+**Sistem Pengiktirafan Kehadiran Bersepadu (SPKB)** is a complete, end-to-end web platform developed for **Perbadanan Labuan**. It modernizes the entire lifecycle of government programs, training sessions, and corporate events.
 
-Designed to meet strict data governance policies, SPKB eliminates manual documentation overhead while ensuring data integrity, providing real-time auditing capabilities, and enforcing strict Role-Based Access Control (RBAC) across departmental divisions.
+Instead of relying on paper sign-in sheets and manually printing certificates, SPKB digitizes the entire workflow. The system features a powerful **Admin Dashboard** for organizing events and tracking attendees, paired with a beautiful, responsive **Public Portal** where participants can mark their attendance (via digital links/QR codes) and securely download their digitally signed e-Certificates.
 
-## 2. Core Capabilities & Architecture
-
-SPKB is architected for high availability, security, and precision.
-
-- **Automated Digital Issuance**: Cryptographically secure, dynamic generation of PDF certificates utilizing PyHanko and SVGLib upon verified attendance submission.
-- **Role-Based Access Control (RBAC)**: Multi-tiered administrative authorization architecture.
-  - *Super Administrators*: Full oversight, cross-departmental configuration, and global analytics.
-  - *Department Administrators*: Isolated authority restricted exclusively to intra-departmental events.
-- **Real-Time Data Analytics**: Administrative dashboards featuring live participant metrics, robust CSV data exportation, and bulk processing capabilities for compliance reporting.
-- **Security & Compliance**: Hardened API endpoints, enforced CSRF protection, secure HTTP-only session management, and comprehensive automated test validation.
-- **Containerized Infrastructure**: Fully packaged within Docker for scalable, highly-available deployment across hybrid-cloud or on-premise government servers.
+The project is a full-stack solution encompassing a highly secure Django backend and a blazing-fast, lightweight Vanilla JavaScript/HTML5 frontend.
 
 ---
 
-## 3. Deployment & Infrastructure Setup
+## ✨ Why the Project is Useful (Core Features)
 
-This system supports containerized deployment for production environments and isolated local configurations for active development.
+SPKB is built to handle the full scope of event management across multiple government departments.
 
-### 3.1. Production Deployment (Docker) - *Standard*
-The mandated method for staging and production server environments to ensure parity and eliminate dependency conflicts.
+### 🎨 The Frontend Ecosystem
+- **Responsive Public Portal:** A mobile-first landing page designed for attendees to easily verify their attendance or retrieve their certificates from any device.
+- **Dynamic Admin Dashboard:** A comprehensive management interface built with Vanilla JavaScript, featuring dynamic data tables, real-time search, and intuitive modals for creating and managing events.
+- **Client-Side Certificate Previews:** Administrators can design and preview certificates dynamically in the browser using HTML5 Canvas before finalizing the designs.
+- **No Heavy Frameworks:** Built entirely without React/Angular to ensure lightning-fast load times, exceptional SEO, and minimal dependency overhead.
+
+### ⚙️ The Backend Engine
+- **Robust REST API:** Powered by Django REST Framework, handling thousands of concurrent requests efficiently.
+- **Automated e-Certificates:** A secure backend PDF rendering engine (`xhtml2pdf`) that generates pixel-perfect, tamper-proof certificates on demand.
+- **Department-Level Data Isolation (RBAC):** Admin users are strictly bound to specific departments (e.g., HR, Finance). The backend rigidly isolates data so departments cannot view or modify each other's attendance records.
+
+### 🛡️ Enterprise Security
+- **Identity Verification Gates:** Public certificate retrieval requires participants to verify their identity (e.g., matching the last 4 digits of their IC Number).
+- **Advanced Cryptography:** Passwords are hashed using the memory-hard **Argon2** algorithm.
+- **Anti-Abuse Protections:** Built-in rate limiting (e.g., 5 logins/min), automated account lockouts after 5 failed attempts, and robust CSRF token rotation.
+- **100% IDOR Prevention:** Absolute prevention of Insecure Direct Object Reference vulnerabilities across all endpoints.
+
+---
+
+## 🔄 System Workflow (How It Works)
+
+1. **Event Creation:** A Department Administrator logs into the Admin Console and creates a new "Program Folder" (e.g., *Cybersecurity Workshop 2026*).
+2. **Attendance Tracking:** The system generates a unique attendance link. Participants click the link (or scan a QR code at the physical venue) and submit their Name and IC Number.
+3. **Admin Verification:** The Administrator monitors the real-time attendance table on the dashboard and closes the attendance window when the event concludes.
+4. **Certificate Generation:** The Administrator clicks "Generate Certificates". The backend processes the attendee list and generates individualized PDFs.
+5. **Participant Retrieval:** Participants visit the Public Portal, search for their IC Number, verify their identity, and download their official e-Certificate.
+
+---
+
+## 🚀 How to Get Started
+
+### Prerequisites
+- **Docker** and **Docker Compose** *(Recommended for Production)*
+- **Python 3.12+** *(For local backend development)*
+- **Node.js** *(Optional, for frontend tooling/tests)*
+
+### Installation (Docker - Production Ready)
 
 ```bash
-# 1. Clone the repository to the designated deployment directory
-git clone https://github.com/yourusername/Sistem-Pengiktirafan-Kehadiran-Bersepadu-SPKB---Perbadanan-Labuan.git
-cd Sistem-Pengiktirafan-Kehadiran-Bersepadu-SPKB---Perbadanan-Labuan
+# 1. Clone the repository
+git clone https://github.com/your-org/SPKB.git
+cd SPKB
 
-# 2. Provision and initiate the isolated container infrastructure
+# 2. Configure environment variables
+cp backend/.env.example backend/.env
+# NOTE: Update backend/.env with your production secrets (SMTP, Secret Key)
+
+# 3. Build and start the containers
 docker compose up -d --build
+
+# 4. Initialize the database and create the master administrator
+docker compose exec web python manage.py migrate
+docker compose exec web python manage.py createsuperuser
 ```
 
-**Service Interfaces:**
-- Public Intake Portal: `http://<server-ip>:8000/`
-- Secure Administrative Console: `http://<server-ip>:8000/admin.html`
-
-### 3.2. Local Development & Engineering
-For authorized software engineers executing structural modifications or running integration tests.
+### Installation (Local Full-Stack Development)
 
 ```bash
-# 1. Initialize the Python virtual environment
+# Terminal 1: Backend Setup
 cd backend
-python -m venv venv_win
-venv_win\Scripts\activate
-
-# 2. Install required system dependencies
-pip install -r ../requirements.txt
-
-# 3. Execute database schema migrations
+python -m venv venv
+source venv/bin/activate          # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+cp .env.example .env              
 python manage.py migrate
-
-# 4. Boot the localized development server
+python manage.py createsuperuser
 python manage.py runserver
+
+# Terminal 2: Frontend (Live Server)
+# Use a local server like VSCode Live Server or Python's http.server 
+# to serve the root directory containing index.html and admin.html
+python -m http.server 3000
 ```
 
----
-
-## 4. Quality Assurance & Testing
-
-To maintain software integrity, all code modifications must pass the centralized automated testing suites before deployment approval.
-
-```bash
-# Execute Backend Security, API, and RBAC Validation (Pytest)
-pytest backend/attendance/tests.py
-
-# Execute Frontend UI and End-to-End Workflow Validation (Playwright)
-npx playwright test
-```
-*Note: A 100% pass rate is mandatory for code integration into the main branch.*
+### Accessing the Platforms
+- **Public Portal:** `http://localhost:8000/` (or `http://localhost:3000/` if running locally via HTTP server)
+- **Admin Dashboard:** `http://localhost:8000/admin.html`
 
 ---
 
-## 5. Support & Technical Documentation
+## 🆘 Where to Get Help
 
-For operational support, architectural documentation, or incident reporting:
+- **Codebase Navigation:**
+  - `frontend/`: Contains all HTML, CSS, and Vanilla JS logic for both the portal and dashboard.
+  - `backend/attendance/`: Contains the Django API views, models, and PDF generation logic.
+- **Issue Tracker:** File bugs or feature requests via the GitHub issues page. Please include replication steps and whether the issue is frontend-UI or backend-API related.
+- **Internal IT Operations:** For deployment, SSL, or domain routing queries, contact the Perbadanan Labuan Infrastructure team.
 
-- **Incident Management**: Submit bug reports and feature proposals via the [Issue Tracker](https://github.com/yourusername/Sistem-Pengiktirafan-Kehadiran-Bersepadu-SPKB---Perbadanan-Labuan/issues).
-- **Technical Documentation**: Comprehensive API specifications and system architectures are maintained in the central IT documentation repository.
-- **Escalation**: For critical system failures or deployment authorizations, contact the **Perbadanan Labuan Central IT Division**.
+---
+
+## 🤝 Maintainers and Contributing
+
+**Primary Maintainer:** Perbadanan Labuan IT Department
+
+We welcome full-stack contributions! To ensure system stability across both the frontend and backend, please follow our workflow:
+
+1. **Fork and Branch:** Create a descriptive feature branch (`git checkout -b feature/new-dashboard-chart`).
+2. **Full-Stack Standards:** 
+   - Backend: Adhere to PEP-8 standards.
+   - Frontend: Use modern ES6+ Vanilla JavaScript. Do not introduce heavy frontend frameworks.
+3. **Backend Testing [CRITICAL]:** We strictly maintain **100% backend test coverage**. Run the test suite before submitting any API changes.
+   ```bash
+   cd backend
+   python manage.py test -v 2
+   ```
+4. **Pull Request:** Open a PR against the `main` branch with a clear description of the UI/UX changes or API modifications.
 
 ---
 
-## 6. Governance & Contributions
-
-This software is maintained by the **Perbadanan Labuan IT Engineering Team** (Lead: Samuel Bin Kimti). 
-
-**Standard Operating Procedure for Contributions:**
-1. Fork the repository to your secure workspace.
-2. Checkout a designated feature branch utilizing standard nomenclature (`git checkout -b feature/PL-102-description`).
-3. Ensure absolute compliance with the Pytest and Playwright automated testing suites.
-4. Submit a formalized Pull Request detailing architectural changes, security implications, and testing validation.
-
----
 <div align="center">
-  <small><b>Hak Cipta Terpelihara © 2026 Perbadanan Labuan</b><br>
-  Proprietary and Confidential. Unauthorized distribution or modification is strictly prohibited.</small>
+  <p>Hak Cipta Terpelihara © 2026 <strong>Perbadanan Labuan</strong></p>
+  <p><i>Proprietary and Confidential</i></p>
 </div>

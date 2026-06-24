@@ -63,6 +63,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'attendance.middleware.SecurityLoggingMiddleware',
+    'attendance.middleware.AbuseProtectionMiddleware',
 ]
 
 ROOT_URLCONF = 'backend.urls'
@@ -87,13 +88,26 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
+# Environment-aware: SQLite for dev/test, PostgreSQL for production.
+# Set DJANGO_DB_ENGINE=django.db.backends.postgresql to use PostgreSQL.
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': os.environ.get('DJANGO_DB_ENGINE', 'django.db.backends.sqlite3'),
+        'NAME': os.environ.get('DJANGO_DB_NAME', str(BASE_DIR / 'db.sqlite3')),
+        'USER': os.environ.get('DJANGO_DB_USER', ''),
+        'PASSWORD': os.environ.get('DJANGO_DB_PASSWORD', ''),
+        'HOST': os.environ.get('DJANGO_DB_HOST', ''),
+        'PORT': os.environ.get('DJANGO_DB_PORT', ''),
+        'CONN_MAX_AGE': int(os.environ.get('DJANGO_DB_CONN_MAX_AGE', '0')),
+        'CONN_HEALTH_CHECKS': True,
+        'OPTIONS': {},
     }
 }
+
+# Enforce SSL for PostgreSQL in production
+if DATABASES['default']['ENGINE'] == 'django.db.backends.postgresql':
+    DATABASES['default']['OPTIONS']['sslmode'] = os.environ.get('DJANGO_DB_SSLMODE', 'require')
 
 
 # Password hashing — Argon2 is memory-hard and resistant to GPU/ASIC attacks
@@ -166,6 +180,31 @@ CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# ------------------------------------------------------------------------------
+# CACHE CONFIGURATION
+# ------------------------------------------------------------------------------
+# Use database-backed cache by default (no external dependencies required).
+# In production, swap to Redis by setting DJANGO_CACHE_BACKEND=redis and
+# installing django-redis.
+CACHES = {
+    'default': {
+        'BACKEND': os.environ.get(
+            'DJANGO_CACHE_BACKEND',
+            'django.core.cache.backends.db.DatabaseCache'
+        ),
+        'LOCATION': os.environ.get('DJANGO_CACHE_LOCATION', 'django_cache'),
+        'TIMEOUT': int(os.environ.get('DJANGO_CACHE_TIMEOUT', '300')),
+        'OPTIONS': {
+            'MAX_ENTRIES': int(os.environ.get('DJANGO_CACHE_MAX_ENTRIES', '10000')),
+        },
+    }
+}
+
+# Create the cache table if using DatabaseCache
+if CACHES['default']['BACKEND'] == 'django.core.cache.backends.db.DatabaseCache':
+    # The table will be created by `manage.py createcachetable` (called in deployment)
+    pass
+
 # Django REST Framework — Enforce Session Authentication globally
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
@@ -179,14 +218,20 @@ REST_FRAMEWORK = {
         'rest_framework.throttling.UserRateThrottle'
     ],
     'DEFAULT_THROTTLE_RATES': {
-        'anon': '100/day', # General protection for anonymous endpoints
-        'user': '1000/day', # General protection for authenticated users
-        'login': '5/minute', # Strict brute-force protection for the login endpoint
-        # Abuse protections
-        'submit': '200/minute',    # Form submissions (high to allow large events)
-        'generate': '20/hour',     # Heavy PDF generation
-        'create_user': '10/hour',  # Account creation
+        # General protection
+        'anon': '50/day',         # General protection for anonymous endpoints
+        'user': '500/day',        # General protection for authenticated users
+        # Authentication endpoints
+        'login': '5/minute',      # Strict brute-force protection for the login endpoint
+        'create_user': '10/hour', # Account creation
         'password_reset': '3/hour',  # Password reset requests
+        # Expensive operations
+        'submit': '30/minute',    # Form submissions (was 200 — too permissive)
+        'generate': '10/hour',    # Heavy PDF generation (was 20)
+        # Global IP-level abuse protection
+        'global_ip': '100/minute',    # Max requests per IP across all endpoints
+        'aggressive_ip': '20/minute',  # Strict limit for expensive endpoints
+        'bot_detection': '30/minute',  # Limit for suspicious User-Agents
     },
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 25,
@@ -229,6 +274,14 @@ LOGGING = {
             'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
             'style': '{',
         },
+        'json': {
+            '()': 'attendance.security_logging.JsonFormatter',
+        },
+    },
+    'filters': {
+        'sensitive_data': {
+            '()': 'attendance.security_logging.SensitiveDataFilter',
+        },
     },
     'handlers': {
         'console': {
@@ -240,19 +293,46 @@ LOGGING = {
         },
         'security_file': {
             'level': 'INFO',
-            'class': 'logging.FileHandler',
+            'class': 'logging.handlers.RotatingFileHandler',
             'filename': BASE_DIR / 'security.log',
+            'maxBytes': 10 * 1024 * 1024,  # 10 MB
+            'backupCount': 5,
             'formatter': 'verbose',
+            'filters': ['sensitive_data'],
+        },
+        'security_json_file': {
+            'level': 'INFO',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': BASE_DIR / 'security.json.log',
+            'maxBytes': 10 * 1024 * 1024,  # 10 MB
+            'backupCount': 5,
+            'formatter': 'json',
+            'filters': ['sensitive_data'],
         },
     },
     'loggers': {
         'django.request': {
-            'handlers': ['console', 'security_file'],
+            'handlers': ['console', 'security_file', 'security_json_file'],
             'level': 'WARNING',
             'propagate': False,
         },
         'security': {
-            'handlers': ['console', 'security_file'],
+            'handlers': ['console', 'security_file', 'security_json_file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'security.auth': {
+            'handlers': ['console', 'security_file', 'security_json_file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'security.api': {
+            'handlers': ['console', 'security_file', 'security_json_file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'security.traffic': {
+            'handlers': ['console', 'security_json_file'],
             'level': 'INFO',
             'propagate': False,
         },
@@ -303,6 +383,12 @@ else:
 # ==============================================================================
 # PRODUCTION SECURITY SETTINGS
 # ==============================================================================
+# Upload size limits — prevent memory exhaustion from large uploads
+DATA_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024   # 5 MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024   # 5 MB
+FILE_UPLOAD_PERMISSIONS = 0o644
+FILE_UPLOAD_DIRECTORY_PERMISSIONS = 0o755
+
 if not DEBUG:
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
