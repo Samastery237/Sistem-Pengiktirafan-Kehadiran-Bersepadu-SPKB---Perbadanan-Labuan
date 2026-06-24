@@ -21,6 +21,7 @@ test.describe('SPKB Frontend E2E Suite', () => {
     await page.fill('#fullname', 'Automated E2E Tester');
     await page.fill('#ic', randomIC);
     await page.fill('#phone', '0198765432');
+    await page.fill('#email', 'tester@example.com');
     await page.selectOption('#organization', 'Jabatan Hal Ehwal Korporat');
     await page.check('#terms');
     
@@ -39,14 +40,15 @@ test.describe('SPKB Frontend E2E Suite', () => {
     await page.fill('#admin-username', 'admin');
     await page.fill('#admin-password', 'admin123');
     
-    // Wait for the login API response
-    const responsePromise = page.waitForResponse(response => 
-      response.url().includes('auth/login/') && response.status() === 200
-    );
     await page.click('#login-btn');
-    await responsePromise;
     
-    await expect(page.locator('#admin-app')).toHaveClass(/.*visible.*/, { timeout: 10000 });
+    // Wait for either success or error to be visible
+    await expect(page.locator('#admin-app.visible, #login-error.show').first()).toBeVisible({ timeout: 15000 });
+    
+    // Ensure no error is shown
+    await expect(page.locator('#login-error')).not.toHaveClass(/.*show.*/);
+    
+    await expect(page.locator('#admin-app')).toHaveClass(/.*visible.*/, { timeout: 5000 });
     await expect(page.locator('#stat-total')).not.toBeEmpty();
   });
 
