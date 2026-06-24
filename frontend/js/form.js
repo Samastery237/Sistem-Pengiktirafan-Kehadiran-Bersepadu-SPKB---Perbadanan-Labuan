@@ -1,10 +1,10 @@
 /* form.js — Attendance Form Logic (Django Backend) */
 
 // ─── Configuration ───
-const API_BASE = `http://${window.location.hostname}:8000/api/attendance/`;
+const API_BASE = `http://${typeof window !== 'undefined' ? window.location.hostname : 'localhost'}:8000/api/attendance/`;
 
 // Get department and folder from URL parameter
-const urlParams = new URLSearchParams(window.location.search);
+const urlParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
 const DEPT_NAME = decodeURIComponent(urlParams.get('dept') || '') || 'Perbadanan Labuan';
 const FOLDER_NAME = decodeURIComponent(urlParams.get('folder') || '') || 'Program Umum';
 
