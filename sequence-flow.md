@@ -16,7 +16,7 @@ This file shows the two separate flows for the SPKB system:
 6. The system validates and saves the attendance record.
 7. A confirmation or success page is displayed.
 
-## Recommended QR Code Flow Chart
+## QR Code Scan Flow Chart
 
 ```mermaid
 flowchart TD

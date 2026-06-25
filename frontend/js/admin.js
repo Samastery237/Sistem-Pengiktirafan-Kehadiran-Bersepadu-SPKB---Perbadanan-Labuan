@@ -55,7 +55,7 @@ async function doLogin() {
       credentials: 'include',
     });
     if (!csrfRes.ok) {
-      throw new Error('Tidak dapat menghubungi pelayan. Sila cuba lagi.');
+      throw new Error(`Tidak dapat menghubungi pelayan (Status: ${csrfRes.status} ${csrfRes.statusText}). Sila cuba lagi.`);
     }
     const csrfData = await csrfRes.json();
     const csrfToken = csrfData.csrfToken || getCookie('csrftoken');
