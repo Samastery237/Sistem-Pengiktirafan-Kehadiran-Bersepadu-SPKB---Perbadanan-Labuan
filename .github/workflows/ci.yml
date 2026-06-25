@@ -18,7 +18,7 @@ jobs:
 
     steps:
     - name: Checkout Repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Set up Python
       uses: actions/setup-python@v6
@@ -26,7 +26,7 @@ jobs:
         python-version: "3.14"
 
     - name: Cache pip dependencies
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: ~/.cache/pip
         key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
@@ -63,7 +63,7 @@ jobs:
 
     steps:
     - name: Checkout Repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Set up Python
       uses: actions/setup-python@v6
@@ -71,7 +71,7 @@ jobs:
         python-version: "3.14"
 
     - name: Cache pip dependencies
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: ~/.cache/pip
         key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
@@ -107,7 +107,7 @@ jobs:
 
     - name: 📊 Upload Coverage Report
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: coverage-report
         path: |
@@ -126,7 +126,7 @@ jobs:
 
     steps:
     - name: Checkout Repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Set up Python
       uses: actions/setup-python@v6
@@ -139,7 +139,7 @@ jobs:
         node-version: "20"
 
     - name: Cache pip dependencies
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: ~/.cache/pip
         key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
@@ -147,7 +147,7 @@ jobs:
           ${{ runner.os }}-pip-
 
     - name: Cache npm dependencies
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: ~/.npm
         key: ${{ runner.os }}-npm-${{ hashFiles('package-lock.json') }}
@@ -184,7 +184,7 @@ jobs:
 
     - name: 📸 Upload Playwright Report on Failure
       if: failure()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: playwright-report
         path: |
