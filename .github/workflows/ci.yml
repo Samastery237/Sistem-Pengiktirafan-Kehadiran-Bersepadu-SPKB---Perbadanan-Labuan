@@ -12,7 +12,7 @@ jobs:
     env:
       DJANGO_SECRET_KEY: 'test-secret-key-for-github-actions-min-50-chars-long-enough'
       DJANGO_DEBUG: 'False'
-      DJANGO_ALLOWED_HOSTS: 'localhost,127.0.0.1'
+      DJANGO_ALLOWED_HOSTS: 'localhost,127.0.0.1,example.com'
       
     steps:
     - uses: actions/checkout@v4
