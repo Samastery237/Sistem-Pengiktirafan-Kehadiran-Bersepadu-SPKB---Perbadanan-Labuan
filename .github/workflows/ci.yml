@@ -49,6 +49,7 @@ jobs:
       run: |
         python manage.py makemigrations
         python manage.py migrate
+        python manage.py createcachetable
         
     - name: Run E2E Tests
       run: npx playwright test
