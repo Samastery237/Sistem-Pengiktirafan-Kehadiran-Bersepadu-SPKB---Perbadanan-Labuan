@@ -163,17 +163,12 @@ class AbuseProtectionMiddleware:
             and request.user.is_authenticated
         )
 
-        # For unauthenticated requests: apply full abuse protection
-        # (IP rate limiting + User-Agent bot detection).
-        # Authenticated users are protected by DRF's per-endpoint throttles
-        # and session security, so we only add rate limit headers for them.
         if not is_authenticated:
-            # Check IP-level rate limit
+            # Unauthenticated: full abuse protection (IP rate limit + UA bot detection)
             if self._is_ip_blocked(ip):
                 logger.warning(f"BOT BLOCKED (Rate Limit): IP={ip}, Path={request.path}")
                 return self._blocked_response(request)
 
-            # Check User-Agent for bot patterns
             if _is_suspicious_user_agent(user_agent):
                 logger.warning(
                     f"BOT BLOCKED (User-Agent): IP={ip}, "
@@ -182,19 +177,31 @@ class AbuseProtectionMiddleware:
                 )
                 return self._blocked_response(request)
 
-            # Track this request for rate limiting
             self._track_request(ip, request.path, user_agent)
 
-        # Process the request
-        response = self.get_response(request)
-
-        # Add rate limit headers for client awareness (only for unauthenticated)
-        if not is_authenticated:
+            response = self.get_response(request)
             remaining = self._get_remaining_requests(ip)
             response['X-RateLimit-Limit'] = str(ABUSE_MAX_REQUESTS)
             response['X-RateLimit-Remaining'] = str(max(0, remaining))
+            return response
 
-        return response
+        # Authenticated users: lighter per-user rate limit to prevent
+        # account-takeover abuse (e.g. data exfiltration, enumeration).
+        # DRF per-endpoint throttles already apply; this adds a global ceiling.
+        user_key = f"{ABUSE_CACHE_PREFIX}user:{request.user.pk}"
+        try:
+            user_count = cache.get(user_key, 0)
+            if user_count >= ABUSE_MAX_REQUESTS:
+                logger.warning(
+                    f"USER RATE LIMITED: User={request.user.username}, "
+                    f"Count={user_count}, Path={request.path}"
+                )
+                return self._blocked_response(request)
+            cache.set(user_key, user_count + 1, timeout=ABUSE_WINDOW_SECONDS)
+        except Exception:
+            pass  # Fail open on cache errors — availability > protection
+
+        return self.get_response(request)
 
     def _get_cache_key(self, ip):
         return f"{ABUSE_CACHE_PREFIX}{ip}"

@@ -27,6 +27,11 @@ RUN pip install -r requirements.txt
 COPY backend /app/backend
 COPY frontend /app/frontend
 
+# Create non-root user and switch to it
+RUN useradd --create-home --shell /bin/bash appuser \
+    && chown -R appuser:appuser /app
+USER appuser
+
 # Expose port
 EXPOSE 8000
 

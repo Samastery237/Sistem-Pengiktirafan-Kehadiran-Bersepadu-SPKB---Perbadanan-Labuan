@@ -13,7 +13,7 @@ jobs:
   lint-and-security:
     runs-on: ubuntu-latest
     env:
-      DJANGO_SECRET_KEY: "ci-cd-temporary-secret-key-for-testing"
+      DJANGO_SECRET_KEY: "ci-cd-temporary-secret-key-for-testing-12345678901"
       DJANGO_DEBUG: "True"
 
     steps:
@@ -58,7 +58,7 @@ jobs:
   backend-tests:
     runs-on: ubuntu-latest
     env:
-      DJANGO_SECRET_KEY: "ci-cd-temporary-secret-key-for-testing"
+      DJANGO_SECRET_KEY: "ci-cd-temporary-secret-key-for-testing-12345678901"
       DJANGO_DEBUG: "True"
 
     steps:
@@ -121,7 +121,7 @@ jobs:
   e2e-tests:
     runs-on: ubuntu-latest
     env:
-      DJANGO_SECRET_KEY: "ci-cd-temporary-secret-key-for-testing"
+      DJANGO_SECRET_KEY: "ci-cd-temporary-secret-key-for-testing-12345678901"
       DJANGO_DEBUG: "True"
 
     steps:

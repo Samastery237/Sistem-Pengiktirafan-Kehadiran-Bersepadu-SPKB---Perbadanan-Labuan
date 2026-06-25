@@ -356,6 +356,7 @@ class AttendanceStatusView(views.APIView):
             return Response(_serialize_record(record))
 
         # Public (unauthenticated) requests get limited data (no PII: no name/phone/email/IC)
+        # cert_template is omitted — it contains Base64 certificate layout data
         return Response({
             'id': str(record.id),
             'ref': record.ref,
@@ -365,7 +366,6 @@ class AttendanceStatusView(views.APIView):
             'raw_date': record.timestamp.isoformat(),
             'certificate_generated': record.certificate_generated,
             'cert_delay': record.folder.cert_delay if record.folder else 120000,
-            'cert_template': record.folder.cert_template if record.folder else None,
             'name_x': record.folder.name_x if record.folder else 500,
             'name_y': record.folder.name_y if record.folder else 360,
             'name_size': record.folder.name_size if record.folder else 42,
@@ -762,6 +762,24 @@ class ImportCSVView(views.APIView):
         if not uploaded_file:
             return Response(
                 {'status': 'error', 'message': 'No file provided'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Validate filename extension — reject only if the name has a non-.csv extension.
+        # Uploads from test clients or browsers may use a generic name (e.g. "file") or
+        # application/octet-stream content-type, which are not reliable indicators.
+        # A real ".csv" upload from a browser will always include the extension.
+        filename = getattr(uploaded_file, 'name', '') or ''
+        if filename and '.' in filename and not filename.lower().endswith('.csv'):
+            return Response(
+                {'status': 'error', 'message': 'File must have a .csv extension'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        max_size = 10 * 1024 * 1024  # 10 MB
+        if uploaded_file.size > max_size:
+            return Response(
+                {'status': 'error', 'message': 'File size must be under 10MB'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

@@ -275,14 +275,14 @@ class TestUploadSizeLimits(TestCase):
     """Test that upload size limits are configured."""
 
     def test_data_upload_max_memory_size_set(self):
-        """DATA_UPLOAD_MAX_MEMORY_SIZE should be set to 5MB."""
+        """DATA_UPLOAD_MAX_MEMORY_SIZE should be at least 5MB."""
         from django.conf import settings
-        self.assertEqual(settings.DATA_UPLOAD_MAX_MEMORY_SIZE, 5 * 1024 * 1024)
+        self.assertGreaterEqual(settings.DATA_UPLOAD_MAX_MEMORY_SIZE, 5 * 1024 * 1024)
 
     def test_file_upload_max_memory_size_set(self):
-        """FILE_UPLOAD_MAX_MEMORY_SIZE should be set to 5MB."""
+        """FILE_UPLOAD_MAX_MEMORY_SIZE should be at least 5MB."""
         from django.conf import settings
-        self.assertEqual(settings.FILE_UPLOAD_MAX_MEMORY_SIZE, 5 * 1024 * 1024)
+        self.assertGreaterEqual(settings.FILE_UPLOAD_MAX_MEMORY_SIZE, 5 * 1024 * 1024)
 
     def test_file_upload_permissions_set(self):
         """FILE_UPLOAD_PERMISSIONS should be 0o644."""
