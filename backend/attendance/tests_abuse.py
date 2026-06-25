@@ -10,15 +10,12 @@ Covers:
   - Different IPs not affected by each other's blocks
 """
 import json
-import time
-from unittest.mock import patch
 
-from django.test import TestCase, override_settings
-from django.urls import reverse
+from django.test import TestCase
 from django.contrib.auth.models import User
 from django.core.cache import cache
 
-from attendance.models import AdminProfile, AttendanceRecord, Department, Folder
+from attendance.models import Department, Folder
 
 # Standard browser User-Agent used in tests to avoid bot detection
 BROWSER_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'

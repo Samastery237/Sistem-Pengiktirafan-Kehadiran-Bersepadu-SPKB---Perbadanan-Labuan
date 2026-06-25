@@ -10,8 +10,6 @@ Covers:
 """
 import json
 import logging
-from io import StringIO
-from unittest.mock import patch
 
 from django.test import TestCase, override_settings
 from django.core.cache import cache

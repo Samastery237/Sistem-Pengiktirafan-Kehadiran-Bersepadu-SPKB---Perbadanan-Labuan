@@ -15,12 +15,9 @@ from datetime import timedelta
 from unittest.mock import patch, MagicMock
 
 from django.contrib.auth.models import User
-from django.contrib.auth.tokens import PasswordResetTokenGenerator
-from django.core.exceptions import ValidationError
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
-from rest_framework import status
 
 from attendance.auth_views import (
     MAX_FAILED_ATTEMPTS,
@@ -825,7 +822,6 @@ class TestUserDetailView(DisableThrottleMixin, TestCase):
         Uses APIRequestFactory to call the view directly with a mocked
         superuser, while the DB has only 1 superuser (the target).
         """
-        from unittest.mock import patch
         from attendance.auth_views import UserDetailView
         from rest_framework.test import APIRequestFactory
 
@@ -1022,7 +1018,7 @@ class TestResendVerificationView(DisableThrottleMixin, TestCase):
 
     def test_already_active_user_returns_400(self):
         """Already active user returns 400."""
-        user = User.objects.create_user(
+        User.objects.create_user(
             username='activeuser', password=STRONG_PASSWORD, is_active=True
         )
         response = self.client.post(
@@ -2087,7 +2083,7 @@ class TestAuthAuditLogging(DisableThrottleMixin, TestCase):
         # Note: user has no email set, so this may not actually log. Check if it does.
         # The user was created without email, so the lookup will fail.
         # Let's use the correct user email.
-        user = User.objects.create_user(
+        User.objects.create_user(
             username='resetlog', password=STRONG_PASSWORD, email='resetlog@test.com'
         )
         with patch.object(security_logger, 'info') as mock_info:

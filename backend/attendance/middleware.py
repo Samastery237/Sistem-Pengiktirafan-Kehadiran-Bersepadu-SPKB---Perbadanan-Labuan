@@ -1,8 +1,6 @@
 import logging
 import time
-from datetime import timedelta
 from django.core.cache import cache
-from django.utils import timezone
 
 logger = logging.getLogger('security')
 

@@ -17,19 +17,16 @@ from datetime import timedelta
 from io import StringIO
 from unittest.mock import patch, MagicMock
 
-from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.core.management import call_command
 from django.test import TestCase, override_settings, RequestFactory
 from django.urls import reverse
 from django.contrib.auth.models import User
 from django.utils import timezone
-from rest_framework import status
 
 from attendance.tests import DisableThrottleMixin
 from attendance.models import (
-    AdminProfile, AttendanceRecord, Department, EmailVerificationToken,
-    FailedLoginAttempt, Folder, UserAccountLock,
+    AdminProfile, AttendanceRecord, Department, FailedLoginAttempt, Folder, UserAccountLock,
 )
 
 # ---------------------------------------------------------------------------
@@ -206,7 +203,7 @@ class TestUnlockAccountsCommand(DisableThrottleMixin, TestCase):
         self.lock.save()
         out = StringIO()
         call_command('unlock_accounts', stdout=out)
-        output = out.getvalue()
+        out.getvalue()
         lock = self._get_lock()
         self.assertIsNone(lock.locked_until)
         self.assertEqual(lock.failure_count, 0)
@@ -226,7 +223,7 @@ class TestUnlockAccountsCommand(DisableThrottleMixin, TestCase):
         self.assertEqual(initial_count, 1)
         out = StringIO()
         call_command('unlock_accounts', stdout=out)
-        output = out.getvalue()
+        out.getvalue()
         # Old attempt should be cleaned up
         self.assertEqual(FailedLoginAttempt.objects.count(), 0)
 
@@ -787,7 +784,7 @@ class TestFullIntegrationFlow(DisableThrottleMixin, TestCase):
         )
 
         # Create a record in the admin's department
-        own_record = AttendanceRecord.objects.create(
+        AttendanceRecord.objects.create(
             fullname="ICT Person",
             ic_number="900101-14-5555",
             phone="0123456789",

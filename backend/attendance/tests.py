@@ -1,15 +1,13 @@
 import csv
 import logging
 from datetime import timedelta
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.contrib.auth.models import User
 from django.contrib.auth.hashers import identify_hasher
 from django.utils import timezone
-from rest_framework import status
-from rest_framework.throttling import BaseThrottle
 
 from attendance.models import (
     AdminProfile, AttendanceRecord, Department, EmailVerificationToken,
@@ -264,8 +262,8 @@ class FullBackendSuite(DisableThrottleMixin, TestCase):
         """Verify IC lookup requires authentication and restricts by department for admins."""
         other_dept = Department.objects.create(name="HR")
         other_folder = Folder.objects.create(department=other_dept, name="Onboarding")
-        my_record = AttendanceRecord.objects.create(fullname="My Record", ic_number="888888888888", phone="111", folder=self.folder)
-        other_record = AttendanceRecord.objects.create(fullname="Other Record", ic_number="888888888888", phone="222", folder=other_folder)
+        AttendanceRecord.objects.create(fullname="My Record", ic_number="888888888888", phone="111", folder=self.folder)
+        AttendanceRecord.objects.create(fullname="Other Record", ic_number="888888888888", phone="222", folder=other_folder)
 
         # 1. Unauthenticated request -> should be denied (403 Forbidden)
         response = self.client.get('/api/attendance/participant/888888888888/')
@@ -1269,7 +1267,6 @@ class TestPasswordResetFlow(DisableThrottleMixin, TestCase):
 
     def test_reset_password_confirm_weak_password_rejected(self):
         """Confirm with a weak password should return 400."""
-        from django.contrib.auth.tokens import PasswordResetTokenGenerator
         from attendance.auth_views import password_reset_token_generator
         token = password_reset_token_generator.make_token(self.user)
 
@@ -1443,14 +1440,14 @@ class TestIDORPrevention(DisableThrottleMixin, TestCase):
 
     def test_record_detail_idor_delete(self):
         """Admin A cannot delete Admin B's records."""
-        admin_a = self._create_admin('admin_a', self.dept_a)
+        self._create_admin('admin_a', self.dept_a)
         self.client.login(username='admin_a', password='TestPass1!')
         resp = self.client.delete(f'/api/attendance/records/{self.record_b.id}/')
         self.assertEqual(resp.status_code, 403)
 
     def test_record_detail_idor_patch(self):
         """Admin A cannot modify Admin B's records."""
-        admin_a = self._create_admin('admin_a2', self.dept_a)
+        self._create_admin('admin_a2', self.dept_a)
         self.client.login(username='admin_a2', password='TestPass1!')
         resp = self.client.patch(f'/api/attendance/records/{self.record_b.id}/',
             data=json.dumps({'fullname': 'Hacked'}), content_type='application/json')
@@ -1458,14 +1455,14 @@ class TestIDORPrevention(DisableThrottleMixin, TestCase):
 
     def test_folder_detail_idor_get(self):
         """Admin A cannot view Admin B's folders."""
-        admin_a = self._create_admin('admin_a3', self.dept_a)
+        self._create_admin('admin_a3', self.dept_a)
         self.client.login(username='admin_a3', password='TestPass1!')
         resp = self.client.get(reverse('folder_detail', args=[self.folder_b.id]))
         self.assertEqual(resp.status_code, 403)
 
     def test_folder_detail_idor_patch(self):
         """Admin A cannot modify Admin B's folders."""
-        admin_a = self._create_admin('admin_a4', self.dept_a)
+        self._create_admin('admin_a4', self.dept_a)
         self.client.login(username='admin_a4', password='TestPass1!')
         resp = self.client.patch(reverse('folder_detail', args=[self.folder_b.id]),
             data=json.dumps({'name': 'Hacked'}), content_type='application/json')
@@ -1473,21 +1470,21 @@ class TestIDORPrevention(DisableThrottleMixin, TestCase):
 
     def test_folder_detail_idor_delete(self):
         """Admin A cannot delete Admin B's folders."""
-        admin_a = self._create_admin('admin_a5', self.dept_a)
+        self._create_admin('admin_a5', self.dept_a)
         self.client.login(username='admin_a5', password='TestPass1!')
         resp = self.client.delete(reverse('folder_detail', args=[self.folder_b.id]))
         self.assertEqual(resp.status_code, 403)
 
     def test_department_detail_idor_delete(self):
         """Admin A cannot delete Admin B's department."""
-        admin_a = self._create_admin('admin_a6', self.dept_a)
+        self._create_admin('admin_a6', self.dept_a)
         self.client.login(username='admin_a6', password='TestPass1!')
         resp = self.client.delete(reverse('department_detail', args=[self.dept_b.id]))
         self.assertEqual(resp.status_code, 403)
 
     def test_superuser_can_access_all_departments(self):
         """Superuser should be able to PATCH records from any department."""
-        super_admin = self._create_admin('super_admin', self.dept_a, is_super=True)
+        self._create_admin('super_admin', self.dept_a, is_super=True)
         self.client.login(username='super_admin', password='TestPass1!')
         resp = self.client.patch(f'/api/attendance/records/{self.record_b.id}/',
             data=json.dumps({'fullname': 'UpdatedBySuper'}), content_type='application/json')
@@ -1497,7 +1494,7 @@ class TestIDORPrevention(DisableThrottleMixin, TestCase):
 
     def test_stats_filtered_by_department(self):
         """Non-superuser stats should only show their department's data."""
-        admin_a = self._create_admin('admin_stats', self.dept_a)
+        self._create_admin('admin_stats', self.dept_a)
         self.client.login(username='admin_stats', password='TestPass1!')
         resp = self.client.get(reverse('stats'))
         self.assertEqual(resp.status_code, 200)
@@ -1505,7 +1502,7 @@ class TestIDORPrevention(DisableThrottleMixin, TestCase):
 
     def test_attendance_list_filtered_by_department(self):
         """Non-superuser list should only show their department's records."""
-        admin_a = self._create_admin('admin_list', self.dept_a)
+        self._create_admin('admin_list', self.dept_a)
         self.client.login(username='admin_list', password='TestPass1!')
         resp = self.client.get(reverse('record_list'))
         self.assertEqual(resp.status_code, 200)
@@ -1675,7 +1672,7 @@ class TestInputValidation(DisableThrottleMixin, TestCase):
 
     def test_password_change_empty_new_password_rejected(self):
         """Password change with empty new password should return 400."""
-        user = User.objects.create_user(username='pwtest', password='TestPass1!')
+        User.objects.create_user(username='pwtest', password='TestPass1!')
         self.client.login(username='pwtest', password='TestPass1!')
         resp = self.client.post('/api/attendance/auth/password/', data=json.dumps({
             'old_password': 'TestPass1!',
@@ -3158,7 +3155,7 @@ class TestImportCSVPartialImport(DisableThrottleMixin, TestCase):
             ",222222222222,0222222222,,Org\n"  # empty fullname -> error, not created
         )
         csv_file = io.BytesIO(csv_content.encode('utf-8'))
-        resp = self.client.post(
+        self.client.post(
             '/api/attendance/import/',
             {'file': csv_file},
             format='multipart',

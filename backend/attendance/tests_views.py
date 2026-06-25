@@ -8,7 +8,7 @@ import io
 import json
 import uuid
 from datetime import timedelta
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from django.contrib.auth.models import User
 from django.test import TestCase
@@ -1572,7 +1572,6 @@ class TestHelperFunctions(DisableThrottleMixin, TestCase):
         """_enforce_department_filter should scope queryset for non-superuser."""
         from attendance.views import _enforce_department_filter
         from rest_framework.test import APIRequestFactory
-        from django.contrib.auth.models import AnonymousUser
 
         other_dept = Department.objects.create(name="HR")
         other_folder = Folder.objects.create(department=other_dept, name="HRFolder")

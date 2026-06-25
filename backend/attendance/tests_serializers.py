@@ -502,7 +502,7 @@ class AttendanceRecordSerializerValidationTest(TestCase):
         }
         serializer = AttendanceRecordSerializer(data=data)
         self.assertTrue(serializer.is_valid())
-        record = serializer.save()
+        serializer.save()
 
         # get_or_create is case-sensitive, so a new department 'it' is created
         self.assertTrue(Department.objects.filter(name='it').exists())
@@ -555,7 +555,7 @@ class AttendanceRecordSerializerValidationTest(TestCase):
 
     def test_cert_delay_zero_when_folder_has_no_delay(self):
         """Record should have cert_delay=0 when folder has cert_delay=0."""
-        no_delay_folder = Folder.objects.create(department=self.dept, name="NoDelay", cert_delay=0)
+        Folder.objects.create(department=self.dept, name="NoDelay", cert_delay=0)
         data = {
             **self.valid_payload,
             'folder_name': 'NoDelay',

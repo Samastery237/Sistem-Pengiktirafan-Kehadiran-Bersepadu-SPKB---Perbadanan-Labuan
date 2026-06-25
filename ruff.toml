@@ -1,0 +1,4 @@
+[lint]
+# Ignore legacy style issues that require manual refactoring.
+# TODO: fix these and remove from ignore list
+ignore = ["E402", "E701"]

@@ -693,7 +693,6 @@ class PasswordResetConfirmView(views.APIView):
         user.save()
 
         # Invalidate any existing sessions for this user
-        from django.contrib.sessions.models import Session
         # We can't easily target user-specific sessions, but the password change
         # invalidates the reset token (which includes the password hash)
 

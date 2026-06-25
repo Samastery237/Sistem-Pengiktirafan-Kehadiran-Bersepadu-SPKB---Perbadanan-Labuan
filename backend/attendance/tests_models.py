@@ -6,7 +6,6 @@ FailedLoginAttempt, UserAccountLock, AbuseRequestLog, EmailVerificationToken.
 """
 
 from datetime import timedelta
-from unittest.mock import patch
 
 from django.test import TestCase
 from django.contrib.auth.models import User
@@ -1042,7 +1041,7 @@ class EmailVerificationTokenModelTest(TestCase):
         """generate_for_user only invalidates tokens for the target user."""
         other_user = User.objects.create_user(username='otherverify', password='TestPass1!')
         other_token = EmailVerificationToken.generate_for_user(other_user)
-        my_token = EmailVerificationToken.generate_for_user(self.user)
+        EmailVerificationToken.generate_for_user(self.user)
         other_token.refresh_from_db()
         self.assertFalse(other_token.is_used)
 
@@ -1058,7 +1057,7 @@ class EmailVerificationTokenModelTest(TestCase):
     def test_user_fk_cascade_delete(self):
         """Deleting a user deletes their EmailVerificationTokens."""
         expires = timezone.now() + timedelta(hours=24)
-        token = EmailVerificationToken.objects.create(
+        EmailVerificationToken.objects.create(
             user=self.user, token="cascade", expires_at=expires
         )
         self.user.delete()
