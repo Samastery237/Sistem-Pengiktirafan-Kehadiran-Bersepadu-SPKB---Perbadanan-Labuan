@@ -9,7 +9,10 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    
+    env:
+      DJANGO_SECRET_KEY: 'test-secret-key-for-github-actions-only'
+      DJANGO_DEBUG: 'False'
+      
     steps:
     - uses: actions/checkout@v4
     
@@ -48,8 +51,6 @@ jobs:
         
     - name: Run E2E Tests
       run: npx playwright test
-      env:
-        DJANGO_DEBUG: 'False'
         
     - name: Upload Test Results
       if: always()
