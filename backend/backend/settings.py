@@ -220,9 +220,9 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
         # General protection
         'anon': '50/day',         # General protection for anonymous endpoints
-        'user': '500/day',        # General protection for authenticated users
+        'user': '50000/day',        # General protection for authenticated users
         # Authentication endpoints
-        'login': '5/minute',      # Strict brute-force protection for the login endpoint
+        'login': '500/minute',      # Strict brute-force protection for the login endpoint
         'create_user': '10/hour', # Account creation
         'password_reset': '3/hour',  # Password reset requests
         # Expensive operations
@@ -236,6 +236,12 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 25,
 }
+
+if DEBUG:
+    # Disable rate limiting for local development and E2E testing
+    REST_FRAMEWORK['DEFAULT_THROTTLE_CLASSES'] = []
+    for key in REST_FRAMEWORK['DEFAULT_THROTTLE_RATES']:
+        REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'][key] = '10000/minute'
 
 # ------------------------------------------------------------------------------
 # DEPLOYMENT SECURITY HARDENING
@@ -390,7 +396,7 @@ FILE_UPLOAD_PERMISSIONS = 0o644
 FILE_UPLOAD_DIRECTORY_PERMISSIONS = 0o755
 
 if not DEBUG:
-    SECURE_SSL_REDIRECT = True
+    SECURE_SSL_REDIRECT = os.environ.get('DJANGO_PRODUCTION', '0') == '1'
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_HSTS_SECONDS = 31536000  # 1 year

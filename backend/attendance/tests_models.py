@@ -1084,3 +1084,193 @@ class EmailVerificationTokenModelTest(TestCase):
             EmailVerificationToken.objects.create(
                 user=other_user, token="dbunique", expires_at=expires
             )
+
+
+# =====================================================================
+# Gap Tests: IC Cleaning, Unique Constraints, Properties
+# =====================================================================
+
+
+class TestAttendanceRecordSaveICCleaning(TestCase):
+    """Tests for clean_ic_number derivation in save()."""
+
+    def setUp(self):
+        self.dept = Department.objects.create(name='IT')
+        self.folder = Folder.objects.create(department=self.dept, name='General')
+
+    def test_save_strips_dashes_from_ic(self):
+        """save() should strip dashes from ic_number."""
+        record = AttendanceRecord(
+            fullname='Test User',
+            ic_number='123456-78-9012',
+            phone='0123456789',
+            folder=self.folder,
+        )
+        record.save()
+        self.assertEqual(record.clean_ic_number, '123456789012')
+
+    def test_save_strips_spaces_from_ic(self):
+        """save() should strip spaces from ic_number."""
+        record = AttendanceRecord(
+            fullname='Test User',
+            ic_number='123 456 789 012',
+            phone='0123456789',
+            folder=self.folder,
+        )
+        record.save()
+        self.assertEqual(record.clean_ic_number, '123456789012')
+
+    def test_save_derives_clean_ic_on_create(self):
+        """save() should populate clean_ic_number on create."""
+        record = AttendanceRecord.objects.create(
+            fullname='Test User',
+            ic_number='987654-321-098',
+            phone='0123456789',
+            folder=self.folder,
+        )
+        self.assertEqual(record.clean_ic_number, '987654321098')
+
+    def test_save_updates_clean_ic_on_modify(self):
+        """Changing ic_number should update clean_ic_number."""
+        record = AttendanceRecord.objects.create(
+            fullname='Test User',
+            ic_number='111111111111',
+            phone='0123456789',
+            folder=self.folder,
+        )
+        record.ic_number = '222222-22-2222'
+        record.save()
+        self.assertEqual(record.clean_ic_number, '222222222222')
+
+
+class TestFolderUniqueTogetherConstraint(TestCase):
+    """Tests for Folder unique_together = ('department', 'name')."""
+
+    def setUp(self):
+        self.dept_a = Department.objects.create(name='Dept A')
+        self.dept_b = Department.objects.create(name='Dept B')
+
+    def test_duplicate_name_same_department_raises(self):
+        """Duplicate folder name in same department should raise IntegrityError."""
+        Folder.objects.create(department=self.dept_a, name='General')
+        with self.assertRaises(IntegrityError):
+            Folder.objects.create(department=self.dept_a, name='General')
+
+    def test_same_name_different_department_succeeds(self):
+        """Same folder name in different departments should be allowed."""
+        Folder.objects.create(department=self.dept_a, name='General')
+        Folder.objects.create(department=self.dept_b, name='General')
+        self.assertEqual(Folder.objects.filter(name='General').count(), 2)
+
+
+class TestEmailVerificationTokenProperties(TestCase):
+    """Tests for EmailVerificationToken.is_valid property."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='testuser', password='TestPass1!')
+
+    def test_is_valid_for_fresh_token(self):
+        """Fresh unused, unexpired token should be valid."""
+        token = EmailVerificationToken.generate_for_user(self.user)
+        self.assertTrue(token.is_valid)
+
+    def test_is_valid_false_for_used_token(self):
+        """Used token should not be valid."""
+        token = EmailVerificationToken.generate_for_user(self.user)
+        token.is_used = True
+        token.save()
+        self.assertFalse(token.is_valid)
+
+    def test_is_valid_false_for_expired_token(self):
+        """Expired token should not be valid."""
+        token = EmailVerificationToken.generate_for_user(self.user)
+        token.expires_at = timezone.now() - timedelta(hours=1)
+        token.save()
+        self.assertFalse(token.is_valid)
+
+    def test_generate_invalidates_previous(self):
+        """generate_for_user should invalidate previous tokens."""
+        old_token = EmailVerificationToken.generate_for_user(self.user)
+        new_token = EmailVerificationToken.generate_for_user(self.user)
+        old_token.refresh_from_db()
+        self.assertTrue(old_token.is_used)
+        self.assertTrue(new_token.is_valid)
+
+
+class TestUserAccountLockProperties(TestCase):
+    """Tests for UserAccountLock.is_locked property."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='testuser', password='TestPass1!')
+
+    def test_is_locked_future_date(self):
+        """Lock with future locked_until should be locked."""
+        lock = UserAccountLock.objects.create(
+            user=self.user,
+            locked_until=timezone.now() + timedelta(minutes=30),
+        )
+        self.assertTrue(lock.is_locked)
+
+    def test_is_locked_past_date(self):
+        """Lock with past locked_until should not be locked."""
+        lock = UserAccountLock.objects.create(
+            user=self.user,
+            locked_until=timezone.now() - timedelta(minutes=1),
+        )
+        self.assertFalse(lock.is_locked)
+
+    def test_is_locked_no_record(self):
+        """User without lock record should not be locked."""
+        lock = UserAccountLock(user=self.user, locked_until=None)
+        # Don't save to DB, just check property
+        self.assertFalse(lock.is_locked)
+
+
+class TestDepartmentCascadeDelete(TestCase):
+    """Tests for department deletion cascade."""
+
+    def setUp(self):
+        self.dept = Department.objects.create(name='Cascade Test')
+        self.folder = Folder.objects.create(department=self.dept, name='Folder 1')
+        AttendanceRecord.objects.create(
+            fullname='Record 1',
+            ic_number='111111111111',
+            phone='0111111111',
+            folder=self.folder,
+        )
+
+    def test_delete_cascades_to_folders(self):
+        """Deleting department should cascade to folders."""
+        self.dept.delete()
+        self.assertFalse(Folder.objects.filter(id=self.folder.id).exists())
+
+    def test_delete_cascades_to_records(self):
+        """Deleting department should cascade to attendance records."""
+        record_id = AttendanceRecord.objects.get(fullname='Record 1').id
+        self.dept.delete()
+        self.assertFalse(AttendanceRecord.objects.filter(id=record_id).exists())
+
+
+# =====================================================================
+# Gap Tests: is_locked edge cases
+# =====================================================================
+
+
+class TestIsLockedEdgeCases(TestCase):
+    """Test UserAccountLock.is_locked property edge cases."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='locktest', password='TestPass1!')
+
+    def test_is_locked_false_when_locked_until_none(self):
+        """A saved lock record with locked_until=None should not be locked."""
+        UserAccountLock.objects.create(user=self.user, locked_until=None)
+        lock = UserAccountLock.objects.get(user=self.user)
+        self.assertFalse(lock.is_locked)
+
+    def test_is_locked_false_when_no_lock_record(self):
+        """A user with no UserAccountLock row should not be locked."""
+        self.assertFalse(UserAccountLock.objects.filter(user=self.user).exists())
+        # The _is_locked helper in auth_views handles this case
+        from attendance.auth_views import _is_locked
+        self.assertFalse(_is_locked(self.user))

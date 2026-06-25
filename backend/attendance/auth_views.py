@@ -28,6 +28,12 @@ logger = logging.getLogger('security')
 
 class LoginThrottle(AnonRateThrottle):
     scope = 'login'
+    
+    def allow_request(self, request, view):
+        from django.conf import settings
+        if settings.DEBUG:
+            return True
+        return super().allow_request(request, view)
 
 class UserCreationThrottle(UserRateThrottle):
     scope = 'create_user'

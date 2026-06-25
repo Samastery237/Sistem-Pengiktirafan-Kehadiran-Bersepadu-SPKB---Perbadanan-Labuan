@@ -344,3 +344,153 @@ class TestAbuseRequestLogModel(TestCase):
         )
         self.assertTrue(log.is_blocked)
         self.assertIsNotNone(log.blocked_until)
+
+
+# =====================================================================
+# Gap Tests: All bot patterns, get_throttled_response
+# =====================================================================
+
+
+class TestBotDetectionAllPatterns(TestCase):
+    """Test all blocked UA patterns."""
+
+    def setUp(self):
+        from attendance.middleware import BLOCKED_UA_PATTERNS
+        self.patterns = BLOCKED_UA_PATTERNS
+
+    def test_all_blocked_patterns(self):
+        """All blocked UA patterns should be blocked."""
+        from attendance.middleware import _is_suspicious_user_agent
+        for pattern in self.patterns:
+            ua = f'Mozilla/5.0 {pattern} Bot'
+            self.assertTrue(_is_suspicious_user_agent(ua), f"Pattern '{pattern}' should be blocked")
+
+    def test_empty_ua_blocked(self):
+        """Empty UA should be blocked."""
+        from attendance.middleware import _is_suspicious_user_agent
+        self.assertTrue(_is_suspicious_user_agent(''))
+        self.assertTrue(_is_suspicious_user_agent(None))
+
+    def test_bypass_with_browser_ua(self):
+        """Normal browser UA should not be blocked."""
+        from attendance.middleware import _is_suspicious_user_agent
+        browser_ua = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        self.assertFalse(_is_suspicious_user_agent(browser_ua))
+
+
+class TestGetThrottledResponse(TestCase):
+    """Test AbuseProtectionMiddleware._blocked_response() method."""
+
+    def _get_blocked_response(self):
+        """Helper to get a blocked response from the middleware."""
+        from attendance.middleware import AbuseProtectionMiddleware
+        from rest_framework.test import APIRequestFactory
+
+        def dummy_get_response(request):
+            from django.http import HttpResponse
+            return HttpResponse('OK')
+
+        middleware = AbuseProtectionMiddleware(dummy_get_response)
+        factory = APIRequestFactory()
+        request = factory.get('/test/')
+        return middleware._blocked_response(request)
+
+    def test_response_body_structure(self):
+        """Response body should have status, message, retry_after."""
+        response = self._get_blocked_response()
+        import json
+        body = json.loads(response.content)
+        self.assertEqual(body['status'], 'error')
+        self.assertIn('message', body)
+        self.assertIn('retry_after', body)
+
+    def test_response_has_retry_after_header(self):
+        """Response should have Retry-After header."""
+        response = self._get_blocked_response()
+        self.assertIn('Retry-After', response)
+        self.assertEqual(response['Retry-After'], '300')
+
+    def test_response_status_code(self):
+        """Response should have 429 status code."""
+        response = self._get_blocked_response()
+        self.assertEqual(response.status_code, 429)
+
+    def test_response_content_type_json(self):
+        """Response should have application/json content type."""
+        response = self._get_blocked_response()
+        self.assertEqual(response['Content-Type'], 'application/json')
+
+
+class TestGetThrottledResponseFunction(TestCase):
+    """Test the standalone get_throttled_response() from abuse.py."""
+
+    def test_returns_429(self):
+        """get_throttled_response() should return 429."""
+        from attendance.abuse import get_throttled_response
+        from rest_framework.test import APIRequestFactory
+
+        factory = APIRequestFactory()
+        request = factory.get('/test/')
+        response = get_throttled_response('global', request)
+        self.assertEqual(response.status_code, 429)
+
+    def test_body_has_retry_after(self):
+        """Body should include retry_after field."""
+        from attendance.abuse import get_throttled_response
+        from rest_framework.test import APIRequestFactory
+        import json
+
+        factory = APIRequestFactory()
+        request = factory.get('/test/')
+        response = get_throttled_response('global', request)
+        body = json.loads(response.content)
+        self.assertEqual(body['retry_after'], 60)
+        self.assertEqual(body['status'], 'error')
+
+    def test_has_retry_after_header(self):
+        """Response should have Retry-After: 60 header."""
+        from attendance.abuse import get_throttled_response
+        from rest_framework.test import APIRequestFactory
+
+        factory = APIRequestFactory()
+        request = factory.get('/test/')
+        response = get_throttled_response('global', request)
+        self.assertEqual(response['Retry-After'], '60')
+
+    def test_content_type_is_json(self):
+        """Response should have application/json content type."""
+        from attendance.abuse import get_throttled_response
+        from rest_framework.test import APIRequestFactory
+
+        factory = APIRequestFactory()
+        request = factory.get('/test/')
+        response = get_throttled_response('global', request)
+        self.assertEqual(response['Content-Type'], 'application/json')
+
+
+class TestBotDetectionThrottleAllowNonBlocked(TestCase):
+    """Test BotDetectionThrottle.allow_request() with non-blocked UAs."""
+
+    def test_allows_custom_ua_not_in_list(self):
+        """A UA that's not empty and not in the list should be allowed."""
+        from attendance.abuse import BotDetectionThrottle
+        from rest_framework.test import APIRequestFactory
+
+        factory = APIRequestFactory()
+        request = factory.get('/test/')
+        request.META['HTTP_USER_AGENT'] = 'MyCustomApp/1.0'
+
+        throttle = BotDetectionThrottle()
+        self.assertTrue(throttle.allow_request(request, None))
+
+    def test_blocks_librab_httpclient(self):
+        """UA containing 'libwww' should be blocked."""
+        from attendance.abuse import BotDetectionThrottle
+        from rest_framework.test import APIRequestFactory
+
+        factory = APIRequestFactory()
+        request = factory.get('/test/')
+        request.META['HTTP_USER_AGENT'] = 'libwww-perl/6.0'
+
+        throttle = BotDetectionThrottle()
+        self.assertFalse(throttle.allow_request(request, None))

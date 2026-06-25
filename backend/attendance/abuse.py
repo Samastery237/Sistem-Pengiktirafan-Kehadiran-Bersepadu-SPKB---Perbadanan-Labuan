@@ -40,6 +40,12 @@ class IPRateThrottle(AnonRateThrottle):
     def get_rate(self):
         return self.THROTTLE_RATES.get(self.scope, self.THROTTLE_RATES.get('anon', '100/day'))
 
+    def allow_request(self, request, view):
+        from django.conf import settings
+        if settings.DEBUG:
+            return True
+        return super().allow_request(request, view)
+
 
 class GlobalIPThrottle(IPRateThrottle):
     """

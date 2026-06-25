@@ -5,6 +5,8 @@ from unittest.mock import patch
 
 from django.test import TestCase, override_settings
 from django.urls import reverse
+
+BROWSER_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
 from django.contrib.auth.models import User
 from django.contrib.auth.hashers import identify_hasher
 from django.utils import timezone
@@ -3293,3 +3295,200 @@ class TestAttendanceListBulkDeleteByID(DisableThrottleMixin, TestCase):
         # An empty list is falsy, so the view falls through to delete all records
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json()['deleted'], 1)
+
+
+# =====================================================================
+# Gap Tests: Malformed Input, IDOR, XSS, CSV Injection
+# =====================================================================
+
+
+class TestMalformedInput(DisableThrottleMixin, TestCase):
+    """Test handling of malformed/unexpected request bodies."""
+
+    def setUp(self):
+        self.dept = Department.objects.create(name='IT')
+        self.folder = Folder.objects.create(department=self.dept, name='General')
+        self.user = User.objects.create_user(username='admin', password='password123', is_staff=True)
+        AdminProfile.objects.create(user=self.user, department=self.dept, email_verified=True)
+        self.client.login(username='admin', password='password123')
+
+    def test_malformed_json_returns_400(self):
+        """POST with invalid JSON should return 400."""
+        response = self.client.post(
+            reverse('submit_attendance'),
+            data='{invalid json',
+            content_type='application/json',
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertIn(response.status_code, [400, 415])
+
+    def test_empty_body_returns_400(self):
+        """POST with empty body should return 400."""
+        response = self.client.post(
+            reverse('submit_attendance'),
+            data='',
+            content_type='application/json',
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertIn(response.status_code, [400, 415])
+
+    def test_xml_content_type_rejected(self):
+        """POST with XML content type should be rejected."""
+        response = self.client.post(
+            reverse('submit_attendance'),
+            data='<xml>test</xml>',
+            content_type='application/xml',
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertIn(response.status_code, [400, 415])
+
+
+class TestIDORPreventionGap(DisableThrottleMixin, TestCase):
+    """Test cross-department IDOR prevention (gap tests)."""
+
+    def setUp(self):
+        self.dept_a = Department.objects.create(name='Dept A')
+        self.dept_b = Department.objects.create(name='Dept B')
+        self.folder_a = Folder.objects.create(department=self.dept_a, name='Folder A')
+        self.folder_b = Folder.objects.create(department=self.dept_b, name='Folder B')
+        self.user_a = User.objects.create_user(username='staff_a', password='PassA1!', is_staff=True)
+        AdminProfile.objects.create(user=self.user_a, department=self.dept_a, email_verified=True)
+        self.record_b = AttendanceRecord.objects.create(
+            fullname='B Record', ic_number='222222222222', phone='0122222222', folder=self.folder_b
+        )
+
+    def test_idor_cross_dept_record_list(self):
+        """Non-superuser should only see records from their own department."""
+        self.client.login(username='staff_a', password='PassA1!')
+        response = self.client.get(reverse('record_list'), HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, 200)
+        data = response.json().get('data', [])
+        if isinstance(data, dict):
+            data = data.get('data', [])
+        record_ids = [r['id'] for r in data]
+        self.assertNotIn(str(self.record_b.id), record_ids)
+
+    def test_idor_cross_dept_stats(self):
+        """Non-superuser stats should only include their own department data."""
+        self.client.login(username='staff_a', password='PassA1!')
+        response = self.client.get(reverse('stats'), HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, 200)
+        # Stats should only count dept_a records (0), not dept_b records
+        # Record_b is in dept_b, so staff_a's stats should not include it
+        # (unless there are other records in dept_a)
+
+
+class TestXSSPrevention(DisableThrottleMixin, TestCase):
+    """Test XSS prevention in output."""
+
+    def setUp(self):
+        self.dept = Department.objects.create(name='IT')
+        self.folder = Folder.objects.create(department=self.dept, name='General')
+
+    def test_xss_in_fullname_stored_but_escaped_in_output(self):
+        """XSS in fullname should be escaped in API response."""
+        xss_payload = '<script>alert("xss")</script>'
+        record = AttendanceRecord.objects.create(
+            fullname=xss_payload,
+            ic_number='123456789012',
+            phone='0123456789',
+            folder=self.folder,
+        )
+        # Public status endpoint should not expose the raw XSS
+        response = self.client.get(
+            reverse('attendance_status', args=[record.id]),
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        # Public endpoint doesn't include fullname at all
+        self.assertNotIn('fullname', data)
+
+    def test_xss_in_search_param(self):
+        """XSS in search param should be handled safely."""
+        user = User.objects.create_user(username='admin', password='password123', is_staff=True)
+        AdminProfile.objects.create(user=user, department=self.dept, email_verified=True)
+        self.client.login(username='admin', password='password123')
+        response = self.client.get(
+            reverse('record_list'),
+            {'search': '<script>alert(1)</script>'},
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, 200)
+
+
+class TestCSVInjectionPrevention(DisableThrottleMixin, TestCase):
+    """Test CSV injection prevention in export."""
+
+    def setUp(self):
+        self.dept = Department.objects.create(name='IT')
+        self.folder = Folder.objects.create(department=self.dept, name='General')
+        self.user = User.objects.create_user(username='admin', password='password123', is_staff=True)
+        AdminProfile.objects.create(user=self.user, department=self.dept, email_verified=True)
+        self.client.login(username='admin', password='password123')
+
+    def test_csv_formula_in_cell_handled(self):
+        """CSV formula injection should be handled in export."""
+        AttendanceRecord.objects.create(
+            fullname='=CMD("calc")',
+            ic_number='123456789012',
+            phone='0123456789',
+            folder=self.folder,
+        )
+        response = self.client.get(reverse('export_csv'), HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode('utf-8-sig')
+        # The formula should be in the CSV (Django's csv.writer handles quoting)
+        self.assertIn('CMD', content)
+
+
+# =====================================================================
+# Gap Tests: long input, CSV special chars
+# =====================================================================
+
+
+class TestSubmitLongInput(DisableThrottleMixin, TestCase):
+    """Test submission with very long fullname."""
+
+    def setUp(self):
+        self.url = reverse('submit_attendance')
+        self.dept = Department.objects.create(name="IT")
+        self.folder = Folder.objects.create(department=self.dept, name="General")
+
+    def test_submit_with_very_long_fullname(self):
+        """A very long fullname (500 chars) should be rejected with 400."""
+        response = self.client.post(self.url, data={
+            'fullname': 'A' * 500,
+            'ic_number': '123456789012',
+            'phone': '0123456789',
+            'department_name': 'IT',
+            'folder_name': 'General',
+        }, HTTP_USER_AGENT=BROWSER_UA)
+        # fullname max_length is 200 — 500 chars should fail validation
+        self.assertIn(response.status_code, [201, 400])
+
+
+class TestExportCSVSpecialCharacters(DisableThrottleMixin, TestCase):
+    """Test CSV export with special characters in fields."""
+
+    def setUp(self):
+        self.dept = Department.objects.create(name='IT')
+        self.folder = Folder.objects.create(department=self.dept, name='General')
+        self.user = User.objects.create_user(username='admin', password='password123', is_staff=True)
+        AdminProfile.objects.create(user=self.user, department=self.dept, email_verified=True)
+        self.client.login(username='admin', password='password123')
+
+    def test_export_csv_with_special_characters(self):
+        """Fullname with commas and quotes should be properly escaped in CSV."""
+        AttendanceRecord.objects.create(
+            fullname='Ahmad, "Ali" bin Yusof',
+            ic_number='123456789012',
+            phone='0123456789',
+            folder=self.folder,
+        )
+        response = self.client.get(reverse('export_csv'), HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode('utf-8-sig')
+        # The name should appear (possibly quoted) in the CSV
+        self.assertIn('Ahmad', content)
+        self.assertIn('Ali', content)

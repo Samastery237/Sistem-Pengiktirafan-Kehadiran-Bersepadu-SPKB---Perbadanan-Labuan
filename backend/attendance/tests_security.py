@@ -288,3 +288,108 @@ class TestUploadSizeLimits(TestCase):
         """FILE_UPLOAD_PERMISSIONS should be 0o644."""
         from django.conf import settings
         self.assertEqual(settings.FILE_UPLOAD_PERMISSIONS, 0o644)
+
+
+# =====================================================================
+# Gap Tests: log_security_event, _get_ip
+# =====================================================================
+
+
+class TestLogSecurityEvent(TestCase):
+    """Test log_security_event() function."""
+
+    def test_log_event_writes_to_security_logger(self):
+        """log_security_event should write to security logger."""
+        from attendance.security_logging import log_security_event
+        from rest_framework.test import APIRequestFactory
+        factory = APIRequestFactory()
+        request = factory.get('/test/')
+        request.META['REMOTE_ADDR'] = '1.2.3.4'
+        with self.assertLogs('security', level='INFO') as cm:
+            log_security_event('TEST_EVENT', request, user='testuser')
+        log_output = '\n'.join(cm.output)
+        self.assertIn('TEST_EVENT', log_output)
+        self.assertIn('testuser', log_output)
+        self.assertIn('1.2.3.4', log_output)
+
+    def test_log_event_includes_path(self):
+        """log_security_event should include request path."""
+        from attendance.security_logging import log_security_event
+        from rest_framework.test import APIRequestFactory
+        factory = APIRequestFactory()
+        request = factory.get('/api/test/')
+        with self.assertLogs('security', level='INFO') as cm:
+            log_security_event('TEST', request)
+        log_output = '\n'.join(cm.output)
+        self.assertIn('/api/test/', log_output)
+
+    def test_log_event_warning_level(self):
+        """level='warning' should log at WARNING level."""
+        from attendance.security_logging import log_security_event
+        from rest_framework.test import APIRequestFactory
+        factory = APIRequestFactory()
+        request = factory.get('/test/')
+        with self.assertLogs('security', level='WARNING') as cm:
+            log_security_event('WARN_EVENT', request, level='warning')
+        log_output = '\n'.join(cm.output)
+        self.assertIn('WARN_EVENT', log_output)
+
+
+class TestGetIPHelper(TestCase):
+    """Test _get_ip() helper function."""
+
+    def test_get_ip_from_remote_addr(self):
+        """Should return REMOTE_ADDR when no X-Forwarded-For."""
+        from attendance.security_logging import _get_ip
+        from rest_framework.test import APIRequestFactory
+        factory = APIRequestFactory()
+        request = factory.get('/test/')
+        request.META['REMOTE_ADDR'] = '10.0.0.1'
+        self.assertEqual(_get_ip(request), '10.0.0.1')
+
+    def test_get_ip_from_x_forwarded_for(self):
+        """Should return first IP from X-Forwarded-For."""
+        from attendance.security_logging import _get_ip
+        from rest_framework.test import APIRequestFactory
+        factory = APIRequestFactory()
+        request = factory.get('/test/')
+        request.META['HTTP_X_FORWARDED_FOR'] = '203.0.113.50, 70.41.3.18'
+        self.assertEqual(_get_ip(request), '203.0.113.50')
+
+    def test_get_ip_xff_trumps_remote(self):
+        """X-Forwarded-For should take priority over REMOTE_ADDR."""
+        from attendance.security_logging import _get_ip
+        from rest_framework.test import APIRequestFactory
+        factory = APIRequestFactory()
+        request = factory.get('/test/')
+        request.META['REMOTE_ADDR'] = '10.0.0.1'
+        request.META['HTTP_X_FORWARDED_FOR'] = '203.0.113.50'
+        self.assertEqual(_get_ip(request), '203.0.113.50')
+
+    def test_get_ip_no_remote_addr_returns_unknown(self):
+        """When REMOTE_ADDR is empty/no headers, should return 'unknown'."""
+        from attendance.security_logging import _get_ip
+        from rest_framework.test import APIRequestFactory
+        factory = APIRequestFactory()
+        request = factory.get('/test/')
+        request.META.pop('HTTP_X_FORWARDED_FOR', None)
+        request.META.pop('REMOTE_ADDR', None)
+        ip = _get_ip(request)
+        self.assertEqual(ip, 'unknown')
+
+    def test_log_event_with_extra_params(self):
+        """log_security_event with extra dict should include extra data."""
+        from attendance.security_logging import log_security_event
+        from rest_framework.test import APIRequestFactory
+        factory = APIRequestFactory()
+        request = factory.get('/api/test/')
+        with self.assertLogs('security', level='INFO') as cm:
+            log_security_event(
+                'CUSTOM_EVENT', request,
+                user='admin',
+                extra={'status': 200, 'method': 'POST'},
+            )
+        log_output = '\n'.join(cm.output)
+        self.assertIn('CUSTOM_EVENT', log_output)
+        self.assertIn('status', log_output)
+        self.assertIn('200', log_output)

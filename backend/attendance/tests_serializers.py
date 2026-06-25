@@ -565,3 +565,211 @@ class AttendanceRecordSerializerValidationTest(TestCase):
         record = serializer.save()
 
         self.assertEqual(record.cert_delay, 0)
+
+
+# =====================================================================
+# Gap Tests: Serializer Edge Cases
+# =====================================================================
+
+
+class TestAttendanceSerializerEdgeCases(TestCase):
+    """Additional serializer edge cases."""
+
+    def setUp(self):
+        self.dept = Department.objects.create(name='IT')
+        self.folder = Folder.objects.create(department=self.dept, name='General')
+
+    def test_ic_with_leading_zeros_preserved(self):
+        """IC with leading zeros should be valid."""
+        from attendance.serializers import AttendanceRecordSerializer
+        data = {
+            'fullname': 'Test User',
+            'ic_number': '012345678901',
+            'phone': '0123456789',
+            'department_name': 'IT',
+            'folder_name': 'General',
+        }
+        serializer = AttendanceRecordSerializer(data=data)
+        self.assertTrue(serializer.is_valid())
+
+    def test_ic_with_letters_rejected(self):
+        """IC with non-digit characters should be invalid."""
+        from attendance.serializers import AttendanceRecordSerializer
+        data = {
+            'fullname': 'Test User',
+            'ic_number': '12345678901A',
+            'phone': '0123456789',
+            'department_name': 'IT',
+            'folder_name': 'General',
+        }
+        serializer = AttendanceRecordSerializer(data=data)
+        self.assertFalse(serializer.is_valid())
+
+    def test_ic_13_digits_rejected(self):
+        """IC with 13 digits should be invalid."""
+        from attendance.serializers import AttendanceRecordSerializer
+        data = {
+            'fullname': 'Test User',
+            'ic_number': '1234567890123',
+            'phone': '0123456789',
+            'department_name': 'IT',
+            'folder_name': 'General',
+        }
+        serializer = AttendanceRecordSerializer(data=data)
+        self.assertFalse(serializer.is_valid())
+
+    def test_ic_11_digits_rejected(self):
+        """IC with 11 digits should be invalid."""
+        from attendance.serializers import AttendanceRecordSerializer
+        data = {
+            'fullname': 'Test User',
+            'ic_number': '12345678901',
+            'phone': '0123456789',
+            'department_name': 'IT',
+            'folder_name': 'General',
+        }
+        serializer = AttendanceRecordSerializer(data=data)
+        self.assertFalse(serializer.is_valid())
+
+    def test_phone_too_short_rejected(self):
+        """Phone with less than 9 digits should be invalid."""
+        from attendance.serializers import AttendanceRecordSerializer
+        data = {
+            'fullname': 'Test User',
+            'ic_number': '123456789012',
+            'phone': '0123',
+            'department_name': 'IT',
+            'folder_name': 'General',
+        }
+        serializer = AttendanceRecordSerializer(data=data)
+        self.assertFalse(serializer.is_valid())
+
+    def test_phone_too_long_rejected(self):
+        """Phone with more than 15 digits should be invalid."""
+        from attendance.serializers import AttendanceRecordSerializer
+        data = {
+            'fullname': 'Test User',
+            'ic_number': '123456789012',
+            'phone': '1234567890123456',
+            'department_name': 'IT',
+            'folder_name': 'General',
+        }
+        serializer = AttendanceRecordSerializer(data=data)
+        self.assertFalse(serializer.is_valid())
+
+    def test_create_reuses_existing_department(self):
+        """Create with existing department name should not create duplicate."""
+        from attendance.serializers import AttendanceRecordSerializer
+        initial_count = Department.objects.count()
+        data = {
+            'fullname': 'New User',
+            'ic_number': '987654321098',
+            'phone': '0198765432',
+            'department_name': 'IT',  # Already exists
+            'folder_name': 'General',  # Already exists
+        }
+        serializer = AttendanceRecordSerializer(data=data)
+        self.assertTrue(serializer.is_valid())
+        serializer.save()
+        self.assertEqual(Department.objects.count(), initial_count)
+
+    def test_missing_required_field_errors(self):
+        """Missing fullname should produce validation error."""
+        from attendance.serializers import AttendanceRecordSerializer
+        data = {
+            'ic_number': '123456789012',
+            'phone': '0123456789',
+            'department_name': 'IT',
+            'folder_name': 'General',
+        }
+        serializer = AttendanceRecordSerializer(data=data)
+        self.assertFalse(serializer.is_valid())
+        self.assertIn('fullname', serializer.errors)
+
+    def test_unicode_fullname_accepted(self):
+        """Unicode characters in fullname should be accepted."""
+        from attendance.serializers import AttendanceRecordSerializer
+        data = {
+            'fullname': 'أحمد بن علي',
+            'ic_number': '123456789012',
+            'phone': '0123456789',
+            'department_name': 'IT',
+            'folder_name': 'General',
+        }
+        serializer = AttendanceRecordSerializer(data=data)
+        self.assertTrue(serializer.is_valid())
+
+
+# =====================================================================
+# Gap Tests: serializer boundary values
+# =====================================================================
+
+
+class TestSerializerBoundaryValues(TestCase):
+    """Test serializer validation at boundary values."""
+
+    def test_ic_exactly_12_digits_valid(self):
+        """IC with exactly 12 digits should be valid."""
+        from attendance.serializers import AttendanceRecordSerializer
+        data = {
+            'fullname': 'Test',
+            'ic_number': '123456789012',
+            'phone': '0123456789',
+            'department_name': 'IT',
+            'folder_name': 'General',
+        }
+        serializer = AttendanceRecordSerializer(data=data)
+        self.assertTrue(serializer.is_valid())
+
+    def test_ic_empty_string_accepted(self):
+        """Empty IC string should be accepted (allow_blank)."""
+        from attendance.serializers import AttendanceRecordSerializer
+        data = {
+            'fullname': 'Test',
+            'ic_number': '',
+            'phone': '0123456789',
+            'department_name': 'IT',
+            'folder_name': 'General',
+        }
+        serializer = AttendanceRecordSerializer(data=data)
+        # Empty IC is allowed (allow_blank=True)
+        self.assertTrue(serializer.is_valid())
+
+    def test_phone_exactly_9_digits_valid(self):
+        """Phone with exactly 9 digits should be valid."""
+        from attendance.serializers import AttendanceRecordSerializer
+        data = {
+            'fullname': 'Test',
+            'ic_number': '123456789012',
+            'phone': '012345678',
+            'department_name': 'IT',
+            'folder_name': 'General',
+        }
+        serializer = AttendanceRecordSerializer(data=data)
+        self.assertTrue(serializer.is_valid())
+
+    def test_phone_exactly_15_digits_valid(self):
+        """Phone with exactly 15 digits should be valid."""
+        from attendance.serializers import AttendanceRecordSerializer
+        data = {
+            'fullname': 'Test',
+            'ic_number': '123456789012',
+            'phone': '012345678901234',
+            'department_name': 'IT',
+            'folder_name': 'General',
+        }
+        serializer = AttendanceRecordSerializer(data=data)
+        self.assertTrue(serializer.is_valid())
+
+    def test_phone_8_digits_rejected(self):
+        """Phone with 8 digits should be rejected (must be 9-15 digits)."""
+        from attendance.serializers import AttendanceRecordSerializer
+        data = {
+            'fullname': 'Test',
+            'ic_number': '123456789012',
+            'phone': '01234567',
+            'department_name': 'IT',
+            'folder_name': 'General',
+        }
+        serializer = AttendanceRecordSerializer(data=data)
+        self.assertFalse(serializer.is_valid())

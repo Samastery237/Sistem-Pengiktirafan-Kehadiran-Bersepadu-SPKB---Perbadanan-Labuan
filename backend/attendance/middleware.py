@@ -148,8 +148,15 @@ class AbuseProtectionMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
+        from django.conf import settings
+
         # Only protect API paths (not admin, static, etc.)
-        if not request.path.startswith('/api/'):
+        # AND explicitly bypass the health check endpoint (so monitoring tools/Playwright don't get blocked)
+        if not request.path.startswith('/api/') or request.path == '/api/attendance/health/':
+            return self.get_response(request)
+
+        # Bypass abuse protection during local development/testing
+        if settings.DEBUG:
             return self.get_response(request)
 
         ip = get_client_ip(request)

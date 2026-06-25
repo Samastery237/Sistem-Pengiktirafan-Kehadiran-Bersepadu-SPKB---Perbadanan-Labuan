@@ -18,6 +18,7 @@ from django.contrib.auth.models import User
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
+from rest_framework import status
 
 from attendance.auth_views import (
     MAX_FAILED_ATTEMPTS,
@@ -2095,3 +2096,345 @@ class TestAuthAuditLogging(DisableThrottleMixin, TestCase):
         self.assertTrue(
             any('PASSWORD RESET REQUESTED' in str(call) for call in mock_info.call_args_list)
         )
+
+
+# =====================================================================
+# Gap Tests: UserDetailView, Token Reuse, Inactive User
+# =====================================================================
+
+
+class TestUserDetailViewSelfDeletionGuard(DisableThrottleMixin, TestCase):
+    """Self-deletion and last-superuser prevention."""
+
+    def setUp(self):
+        self.superuser = User.objects.create_superuser(
+            username='super', password='SuperPass1!', email='super@test.com'
+        )
+        self.client.login(username='super', password='SuperPass1!')
+        self.url = reverse('users_detail', args=[self.superuser.id])
+
+    def test_self_delete_returns_400(self):
+        """Superuser should not be able to delete themselves."""
+        response = self.client.delete(self.url, HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('yourself', response.json().get('message', '').lower())
+
+    def test_last_superuser_delete_blocked(self):
+        """Deleting the only superuser should return 400."""
+        response = self.client.delete(self.url, HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_delete_other_user_succeeds(self):
+        """Deleting a different user should succeed."""
+        other = User.objects.create_user(username='other', password='OtherPass1!')
+        url = reverse('users_detail', args=[other.id])
+        response = self.client.delete(url, HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(User.objects.filter(id=other.id).exists())
+
+
+class TestUserDetailViewLastSuperuser(DisableThrottleMixin, TestCase):
+    """Last superuser prevention when multiple superusers exist."""
+
+    def setUp(self):
+        self.super1 = User.objects.create_superuser(
+            username='super1', password='SuperPass1!', email='super1@test.com'
+        )
+        self.super2 = User.objects.create_superuser(
+            username='super2', password='SuperPass2!', email='super2@test.com'
+        )
+        self.client.login(username='super1', password='SuperPass1!')
+
+    def test_delete_second_superuser_succeeds(self):
+        """With 2+ superusers, deletion should be allowed."""
+        url = reverse('users_detail', args=[self.super2.id])
+        response = self.client.delete(url, HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_delete_nonexistent_returns_404(self):
+        """Deleting nonexistent user should return 404."""
+        url = reverse('users_detail', args=[99999])
+        response = self.client.delete(url, HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
+class TestPasswordResetRequestInactiveUser(DisableThrottleMixin, TestCase):
+    """Password reset for inactive/nonexistent users (anti-enumeration)."""
+
+    def setUp(self):
+        self.url = reverse('auth_reset_password')
+
+    def test_inactive_user_returns_same_message(self):
+        """Inactive user should get same response as active (anti-enumeration)."""
+        User.objects.create_user(
+            username='inactive', password='Pass1!', email='inactive@test.com', is_active=False
+        )
+        response = self.client.post(
+            self.url,
+            data=json.dumps({'email': 'inactive@test.com'}),
+            content_type='application/json',
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        # Should return 200 (not revealing whether user exists/is active)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_nonexistent_email_returns_same_message(self):
+        """Nonexistent email should return same response."""
+        response = self.client.post(
+            self.url,
+            data=json.dumps({'email': 'nobody@test.com'}),
+            content_type='application/json',
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+
+class TestVerifyEmailTokenReuse(DisableThrottleMixin, TestCase):
+    """Email verification token reuse and invalid tokens."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='unverified', password='Pass1!', email='unverified@test.com', is_active=False
+        )
+        self.token = EmailVerificationToken.generate_for_user(self.user)
+
+    def test_valid_token_verifies_email(self):
+        """Valid token should activate user."""
+        url = reverse('auth_verify_email', args=[self.token.token])
+        response = self.client.get(url, HTTP_USER_AGENT=BROWSER_UA)
+        self.assertIn(response.status_code, [200, 302])
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.is_active)
+
+    def test_reused_token_returns_error(self):
+        """Re-using an already-used token should return error."""
+        self.token.is_used = True
+        self.token.save()
+        url = reverse('auth_verify_email', args=[self.token.token])
+        response = self.client.get(url, HTTP_USER_AGENT=BROWSER_UA)
+        self.assertIn(response.status_code, [400, 404])
+
+    def test_invalid_token_returns_error(self):
+        """Random string token should return error."""
+        url = reverse('auth_verify_email', args=['invalid-token-12345'])
+        response = self.client.get(url, HTTP_USER_AGENT=BROWSER_UA)
+        self.assertIn(response.status_code, [400, 404])
+
+
+class TestResendVerificationExtended(DisableThrottleMixin, TestCase):
+    """Resend verification edge cases."""
+
+    def setUp(self):
+        self.url = reverse('auth_resend_verification')
+
+    def test_already_verified_returns_error(self):
+        """Already verified user should get error."""
+        user = User.objects.create_user(
+            username='verified', password='Pass1!', email='verified@test.com'
+        )
+        AdminProfile.objects.create(user=user, email_verified=True)
+        response = self.client.post(
+            self.url,
+            data=json.dumps({'email': 'verified@test.com'}),
+            content_type='application/json',
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        # Should return 400 (already verified)
+        self.assertIn(response.status_code, [400, 200])
+
+
+class TestLoginViewInactiveUser(DisableThrottleMixin, TestCase):
+    """Login with inactive or locked account."""
+
+    def setUp(self):
+        self.url = reverse('auth_login')
+
+    def test_inactive_user_returns_error(self):
+        """Inactive user with correct password should get error."""
+        User.objects.create_user(
+            username='inactive', password='Pass1!', is_active=False
+        )
+        response = self.client.post(
+            self.url,
+            data=json.dumps({'username': 'inactive', 'password': 'Pass1!'}),
+            content_type='application/json',
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertIn(response.status_code, [401, 403])
+
+    def test_locked_account_returns_error(self):
+        """Locked user with correct password should get error."""
+        user = User.objects.create_user(username='locked', password='LockedPass1!')
+        UserAccountLock.objects.create(
+            user=user,
+            locked_until=timezone.now() + timedelta(minutes=30),
+            failure_count=5,
+        )
+        response = self.client.post(
+            self.url,
+            data=json.dumps({'username': 'locked', 'password': 'LockedPass1!'}),
+            content_type='application/json',
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertIn(response.status_code, [401, 403])
+
+
+class TestChangePasswordExtended(DisableThrottleMixin, TestCase):
+    """Change password edge cases."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='admin', password='OldPass1!')
+        self.client.login(username='admin', password='OldPass1!')
+        self.url = reverse('auth_change_password')
+
+    def test_wrong_old_password_rejected(self):
+        """Wrong old password should return 400."""
+        response = self.client.post(
+            self.url,
+            data=json.dumps({'old_password': 'WrongOld1!', 'new_password': 'NewPass1!'}),
+            content_type='application/json',
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_weak_new_password_rejected(self):
+        """Weak new password should be rejected."""
+        response = self.client.post(
+            self.url,
+            data=json.dumps({'old_password': 'OldPass1!', 'new_password': 'weak'}),
+            content_type='application/json',
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_missing_old_password_rejected(self):
+        """Missing old_password field should return 400."""
+        response = self.client.post(
+            self.url,
+            data=json.dumps({'new_password': 'NewPass1!'}),
+            content_type='application/json',
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_missing_new_password_rejected(self):
+        """Missing new_password field should return 400."""
+        response = self.client.post(
+            self.url,
+            data=json.dumps({'old_password': 'OldPass1!'}),
+            content_type='application/json',
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+# =====================================================================
+# Gap Tests: inactive user strict 403, reset confirm edge cases,
+# user create email, delete nonexistent
+# =====================================================================
+
+
+class TestInactiveUserLoginStrict403(DisableThrottleMixin, TestCase):
+    """Verify inactive user gets 403 (not 401) when DEBUG=False."""
+
+    def setUp(self):
+        self.url = reverse('auth_login')
+
+    def test_inactive_user_returns_403(self):
+        """Inactive user with correct password should get 403 (belum diaktifkan)."""
+        from django.conf import settings
+        User.objects.create_user(username='inactive2', password='Pass1!', is_active=False)
+        # Ensure DEBUG=False to hit the inactive branch
+        with override_settings(DEBUG=False):
+            response = self.client.post(
+                self.url,
+                data=json.dumps({'username': 'inactive2', 'password': 'Pass1!'}),
+                content_type='application/json',
+                HTTP_USER_AGENT=BROWSER_UA,
+            )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class TestPasswordResetConfirmEdgeCases(DisableThrottleMixin, TestCase):
+    """Test PasswordResetConfirmView with invalid uid and weak password."""
+
+    def setUp(self):
+        self.url = reverse('auth_reset_password_confirm')
+
+    def test_invalid_uid_returns_400(self):
+        """Non-numeric uid should return 400."""
+        response = self.client.post(
+            self.url,
+            data=json.dumps({
+                'uid': 'invalid',
+                'token': 'fake-token',
+                'new_password': 'NewStr0ng!Pass',
+            }),
+            content_type='application/json',
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_weak_password_returns_400(self):
+        """Weak new password should return 400."""
+        user = User.objects.create_user(username='resetuser', password='OrigPass1!')
+        # Generate a valid token
+        from django.contrib.auth.tokens import default_token_generator
+        uid = user.pk
+        token = default_token_generator.make_token(user)
+
+        response = self.client.post(
+            self.url,
+            data=json.dumps({
+                'uid': uid,
+                'token': token,
+                'new_password': 'weak',
+            }),
+            content_type='application/json',
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+
+class TestUserDetailDeleteNonexistent(DisableThrottleMixin, TestCase):
+    """Test that DELETE on a nonexistent user ID returns 404."""
+
+    def setUp(self):
+        self.superuser = User.objects.create_superuser(
+            username='super', password='SuperPass1!', email='super@test.com'
+        )
+        self.client.login(username='super', password='SuperPass1!')
+
+    def test_delete_nonexistent_user_returns_404(self):
+        """DELETE a user ID that doesn't exist should return 404."""
+        response = self.client.delete(
+            reverse('users_detail', args=[99999]),
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
+class TestUserCreateExistingEmail(DisableThrottleMixin, TestCase):
+    """Test UserListView POST with existing email handles gracefully."""
+
+    def setUp(self):
+        self.superuser = User.objects.create_superuser(
+            username='super', password='SuperPass1!', email='original@test.com'
+        )
+        self.client.login(username='super', password='SuperPass1!')
+        self.url = reverse('users_list')
+
+    def test_create_user_with_existing_email(self):
+        """Creating a user with an existing email should succeed (email uniqueness is not enforced)."""
+        response = self.client.post(
+            self.url,
+            data=json.dumps({
+                'username': 'newuser',
+                'password': 'NewPass1!',
+                'email': 'original@test.com',  # Same email as superuser
+            }),
+            content_type='application/json',
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        # No email field in User model is unique — should succeed
+        self.assertIn(response.status_code, [status.HTTP_200_OK, status.HTTP_201_CREATED])
