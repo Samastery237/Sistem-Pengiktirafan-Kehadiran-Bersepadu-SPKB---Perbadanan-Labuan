@@ -100,11 +100,10 @@ jobs:
         echo "✅ All frontend assets verified"
 
     - name: 🔐 Run Backend Tests with Coverage
+      working-directory: backend
       run: |
-        cd backend
         python manage.py migrate
         python -m pytest attendance/tests.py --cov=attendance --cov-report=term-missing --cov-report=html --cov-fail-under=44
-      working-directory: backend
 
     - name: 📊 Upload Coverage Report
       if: always()
