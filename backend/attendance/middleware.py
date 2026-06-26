@@ -68,6 +68,17 @@ class SecurityLoggingMiddleware:
         response['X-Frame-Options'] = 'DENY'
         response['Referrer-Policy'] = 'strict-origin-when-cross-origin'
         response['Permissions-Policy'] = 'camera=(), microphone=(), geolocation=()'
+        response['Content-Security-Policy'] = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdnjs.cloudflare.com; "
+            "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; "
+            "img-src 'self' data: https:; "
+            "font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; "
+            "frame-src 'self' https://maps.google.com; "
+            "connect-src 'self'; "
+            "form-action 'self'; "
+            "base-uri 'self'"
+        )
 
         # Prevent caching of authenticated responses
         if request.path.startswith('/api/'):

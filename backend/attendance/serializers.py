@@ -1,5 +1,25 @@
+import base64
+from io import BytesIO
+from PIL import Image
 from rest_framework import serializers
 from .models import Department, Folder, AttendanceRecord
+
+
+def validate_cert_template(value):
+    if not value:
+        return value
+    try:
+        decoded = base64.b64decode(value, validate=True)
+        if len(decoded) > 5 * 1024 * 1024:
+            raise serializers.ValidationError("Saiz imej sijil mesti kurang daripada 5MB.")
+        Image.open(BytesIO(decoded)).verify()
+    except (ValueError, base64.binascii.Error):
+        raise serializers.ValidationError("Data imej sijil tidak sah (bukan Base64 yang valid).")
+    except Exception:
+        raise serializers.ValidationError(
+            "Imej sijil tidak sah. Hanya PNG, JPEG, GIF, atau WebP dibenarkan."
+        )
+    return value
 
 
 class FolderSerializer(serializers.ModelSerializer):
@@ -12,7 +32,7 @@ class FolderSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'department']
         extra_kwargs = {
-            'cert_template': {'required': False, 'allow_blank': True},
+            'cert_template': {'required': False, 'allow_blank': True, 'validators': [validate_cert_template]},
             'cert_delay': {'required': False},
             'name_x': {'required': False},
             'name_y': {'required': False},
