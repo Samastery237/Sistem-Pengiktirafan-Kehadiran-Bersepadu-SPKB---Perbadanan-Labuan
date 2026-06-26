@@ -130,6 +130,17 @@ jobs:
         python manage.py createcachetable
         python manage.py createsuperuser --noinput --username admin --email admin@example.com || true
 
+    - name: Set E2E test credentials
+      working-directory: ./backend
+      run: |
+        python manage.py shell -c "
+from django.contrib.auth.models import User
+u = User.objects.get(username='admin')
+u.set_password('admin123')
+u.save()
+print('E2E test password set to admin123')
+"
+
     - name: Run E2E Tests
       run: npx playwright test
 
