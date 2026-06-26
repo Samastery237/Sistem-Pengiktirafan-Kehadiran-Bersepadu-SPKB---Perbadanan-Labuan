@@ -75,7 +75,7 @@ jobs:
 
     - name: Run Django Tests
       working-directory: ./backend
-      run: python manage.py test
+      run: python manage.py test --parallel
 
   e2e-tests:
     name: E2E Tests
