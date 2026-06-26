@@ -177,9 +177,10 @@ class AbuseProtectionMiddleware:
                 return self._blocked_response(request)
 
             if _is_suspicious_user_agent(user_agent):
+                safe_ua = (user_agent[:80] if user_agent else '<empty>').replace('\n', '_').replace('\r', '_')
                 logger.warning(
                     f"BOT BLOCKED (User-Agent): IP={ip}, "
-                    f"UA='{user_agent[:80] if user_agent else '<empty>'}', "
+                    f"UA='{safe_ua}', "
                     f"Path={request.path}"
                 )
                 return self._blocked_response(request)

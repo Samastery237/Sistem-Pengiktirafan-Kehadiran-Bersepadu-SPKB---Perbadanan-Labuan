@@ -1,28 +1,30 @@
+version: '3.8'
 
 services:
   web:
-    # Use a specific image tag for easy rollback (e.g., spkb-web:v1.0.0)
-    # If a deployment fails, simply change the tag back to the previous version and run `docker-compose up -d`
-    image: spkb-web:latest
-    build:
-      context: .
-      dockerfile: Dockerfile
-    command: gunicorn backend.wsgi:application --chdir /app/backend --bind 0.0.0.0:8000
-    volumes:
-      - ./backend:/app/backend:ro
-      - ./frontend:/app/frontend:ro
-      - static_volume:/app/staticfiles
+    build: .
+    container_name: spkb_web
     ports:
       - "8000:8000"
-    env_file:
-      - ./backend/.env
-    restart: always
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/attendance/health/"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 15s
+    volumes:
+      # Persist SQLite database (mounted to a directory)
+      - db-data:/app/backend/data
+      # Persist media uploads and generated certificates
+      - media-data:/app/backend/media
+    environment:
+      - DJANGO_DEBUG=False
+      - DJANGO_SECRET_KEY=production-secret-key-change-me-later-in-production
+      - DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
+      - DJANGO_CACHE_BACKEND=django.core.cache.backends.locmem.LocMemCache
+      - DJANGO_DB_NAME=/app/backend/data/db.sqlite3
+    restart: unless-stopped
+    command: >
+      bash -c "python manage.py makemigrations &&
+               python manage.py migrate &&
+               python manage.py createcachetable &&
+               python manage.py createsuperuser --noinput --username admin --email admin@example.com || true &&
+               gunicorn --bind 0.0.0.0:8000 --workers 3 backend.wsgi:application"
 
 volumes:
-  static_volume:
+  db-data:
+  media-data:

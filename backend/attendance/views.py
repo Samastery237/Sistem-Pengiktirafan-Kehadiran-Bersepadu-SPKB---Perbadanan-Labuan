@@ -16,6 +16,7 @@ IDOR Prevention Strategy:
 """
 import re
 import csv
+import hmac
 from datetime import timedelta
 from io import BytesIO
 
@@ -37,7 +38,7 @@ from rest_framework.pagination import PageNumberPagination
 
 from .abuse import AggressiveIPThrottle, GlobalIPThrottle
 from .models import AttendanceRecord, Department, Folder
-from .serializers import AttendanceRecordSerializer
+from .serializers import AttendanceRecordSerializer, FolderSerializer
 
 
 # ──────────────────────────────────────────────
@@ -63,6 +64,13 @@ class StandardPagination(PageNumberPagination):
 # ──────────────────────────────────────────────
 # Helpers
 # ──────────────────────────────────────────────
+
+def safe_csv(value):
+    if not value:
+        return ''
+    if value and value[0] in ('=', '+', '-', '@', '\t', '\n', '\r'):
+        return "'" + value
+    return value
 
 class SubmitThrottle(AnonRateThrottle):
     scope = 'submit'
@@ -395,7 +403,7 @@ class StatsView(views.APIView):
         if folder_id:
             qs = qs.filter(folder_id=folder_id)
 
-        today = timezone.now().date()
+        today = timezone.localdate()
         response_data = {
             'total': qs.count(),
             'today': qs.filter(timestamp__date=today).count(),
@@ -603,22 +611,13 @@ class FolderDetailView(views.APIView):
         folder, error = self._get_folder(request, folder_id)
         if error:
             return error
-        if 'name' in request.data: folder.name = request.data['name']
-        if 'cert_delay' in request.data: folder.cert_delay = int(request.data['cert_delay'])
-        if 'cert_template' in request.data: folder.cert_template = request.data['cert_template']
-        if 'name_x' in request.data: folder.name_x = float(request.data['name_x'])
-        if 'name_y' in request.data: folder.name_y = float(request.data['name_y'])
-        if 'name_size' in request.data: folder.name_size = float(request.data['name_size'])
-        if 'show_ic' in request.data: folder.show_ic = str(request.data['show_ic']).lower() == 'true'
-        if 'ic_x' in request.data: folder.ic_x = float(request.data['ic_x'])
-        if 'ic_y' in request.data: folder.ic_y = float(request.data['ic_y'])
-        if 'ic_size' in request.data: folder.ic_size = float(request.data['ic_size'])
-        if 'text_color' in request.data: folder.text_color = request.data['text_color']
-        if 'font_family' in request.data: folder.font_family = request.data['font_family']
-        if 'event_name' in request.data: folder.event_name = request.data['event_name']
-        if 'event_date' in request.data: folder.event_date = request.data['event_date']
-        if 'organizer' in request.data: folder.organizer = request.data['organizer']
-        folder.save()
+        serializer = FolderSerializer(folder, data=request.data, partial=True)
+        if not serializer.is_valid():
+            return Response(
+                {'status': 'error', 'errors': serializer.errors},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        serializer.save()
         return Response({
             'status': 'success',
             'id': folder.id,
@@ -661,11 +660,11 @@ class ExportCSVView(views.APIView):
                          'E-mel', 'Organisasi', 'Tarikh'])
         for r in qs:
             writer.writerow([
-                r.ref,
-                r.folder.department.name if r.folder and r.folder.department else '—',
-                r.folder.name if r.folder else '—',
-                r.fullname, r.ic_number,
-                r.phone, r.email, r.organization,
+                safe_csv(r.ref),
+                safe_csv(r.folder.department.name if r.folder and r.folder.department else '—'),
+                safe_csv(r.folder.name if r.folder else '—'),
+                safe_csv(r.fullname), safe_csv(r.ic_number),
+                safe_csv(r.phone), safe_csv(r.email), safe_csv(r.organization),
                 r.timestamp.strftime('%d %B %Y, %I:%M %p'),
             ])
         return response
@@ -693,7 +692,7 @@ class DownloadCertificateView(views.APIView):
             )
 
         record_ic_suffix = (record.clean_ic_number or '')[-4:]
-        if not record_ic_suffix or ic_verify[-4:] != record_ic_suffix:
+        if not record_ic_suffix or not hmac.compare_digest(ic_verify[-4:], record_ic_suffix):
             return Response(
                 {'status': 'error', 'message': 'IC verification failed.'},
                 status=status.HTTP_403_FORBIDDEN,
@@ -707,10 +706,9 @@ class DownloadCertificateView(views.APIView):
 
         pdf_bytes = _render_to_pdf('certificate.html', context)
         if pdf_bytes:
-            # Only mark as generated after successful PDF creation
-            if not record.certificate_generated:
-                record.certificate_generated = True
-                record.save(update_fields=['certificate_generated'])
+            AttendanceRecord.objects.filter(id=record.id, certificate_generated=False).update(
+                certificate_generated=True
+            )
 
             filename = f"Sijil_{record.fullname.replace(' ', '_')}.pdf"
             response = HttpResponse(pdf_bytes, content_type='application/pdf')
@@ -898,13 +896,17 @@ class AuditLogView(views.APIView):
 
         # Manual pagination
         total = len(entries)
-        page = int(request.query_params.get('page', 1))
+        try:
+            page = int(request.query_params.get('page', 1))
+        except (ValueError, TypeError):
+            page = 1
         page_size = 25
         start = (page - 1) * page_size
         end = start + page_size
         paginated = entries[start:end]
 
         return Response({
+            'content_type': 'application/json',
             'count': total,
             'results': paginated,
             'next': page + 1 if end < total else None,

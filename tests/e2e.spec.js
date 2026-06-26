@@ -331,7 +331,7 @@ test.describe('Records page additional tests', () => {
 
       // Change name in modal
       await records.fillEditFullName('Cancel Test');
-      await records.cancelModal();
+      await records.cancelEditModal();
 
       // Table should be unchanged
       const afterText = await firstRow.textContent();

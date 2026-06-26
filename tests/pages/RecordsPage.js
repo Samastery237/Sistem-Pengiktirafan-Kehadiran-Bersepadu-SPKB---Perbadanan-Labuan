@@ -106,6 +106,11 @@ class RecordsPage extends BasePage {
     await this.page.waitForTimeout(500);
   }
 
+  async cancelEditModal() {
+    await this.page.locator('#edit-modal .btn-ghost').click();
+    await this.page.waitForTimeout(500);
+  }
+
   // --- Search & Filter ---
   async search(query) {
     await this.page.fill('#search-input', query);

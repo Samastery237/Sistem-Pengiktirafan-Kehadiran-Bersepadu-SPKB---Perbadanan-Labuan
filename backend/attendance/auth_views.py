@@ -7,6 +7,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
+from django.db.models import F
 from django.middleware.csrf import get_token, rotate_token
 from django.utils import timezone
 from rest_framework import status, views
@@ -87,24 +88,26 @@ def _record_failed_attempt(username, ip):
         return  # Don't create lock records for non-existent users
 
     lock, _ = UserAccountLock.objects.get_or_create(user=user)
-    lock.failure_count += 1
-    lock.last_failure_at = timezone.now()
 
-    # Check if we should lock the account
     window_start = timezone.now() - timedelta(minutes=ATTEMPT_WINDOW_MINUTES)
     recent_attempts = FailedLoginAttempt.objects.filter(
         username=username,
         attempted_at__gte=window_start
     ).count()
 
+    UserAccountLock.objects.filter(user=user).update(
+        failure_count=F('failure_count') + 1,
+        last_failure_at=timezone.now(),
+        locked_until=timezone.now() + timedelta(minutes=LOCKOUT_DURATION_MINUTES)
+        if recent_attempts >= MAX_FAILED_ATTEMPTS
+        else None,
+    )
+
     if recent_attempts >= MAX_FAILED_ATTEMPTS:
-        lock.locked_until = timezone.now() + timedelta(minutes=LOCKOUT_DURATION_MINUTES)
         logger.warning(
             f"ACCOUNT LOCKED: User={username}, IP={ip}, "
-            f"Failures={recent_attempts}, LockedUntil={lock.locked_until}"
+            f"Failures={recent_attempts}, LockedUntil={timezone.now() + timedelta(minutes=LOCKOUT_DURATION_MINUTES)}"
         )
-
-    lock.save(update_fields=['failure_count', 'last_failure_at', 'locked_until'])
 
 
 def _reset_failed_attempts(username):
@@ -259,18 +262,6 @@ class LoginView(views.APIView):
             )
             return response
         else:
-            # Check if user exists but is inactive (to give a better error message)
-            try:
-                inactive_user = User.objects.get(username=username)
-                if not inactive_user.is_active:
-                    logger.warning(f"LOGIN FAILED (Inactive): User={username}, IP={ip}")
-                    return Response(
-                        {'status': 'error', 'message': 'Akaun ini belum diaktifkan. Sila semak e-mel anda.'},
-                        status=status.HTTP_403_FORBIDDEN
-                    )
-            except User.DoesNotExist:
-                pass
-
             # Record failed attempt and potentially lock account
             _record_failed_attempt(username, ip)
             logger.warning(f"LOGIN FAILED: AttemptedUser={username}, IP={ip}")
@@ -575,20 +566,10 @@ class ResendVerificationView(views.APIView):
         try:
             user = User.objects.get(username=username)
         except User.DoesNotExist:
-            # Don't reveal whether the user exists
             return Response({'status': 'success', 'message': 'Jika akaun wujud, e-mel pengesahan akan dihantar.'})
 
-        if user.is_active:
-            return Response(
-                {'status': 'error', 'message': 'Akaun ini sudah diaktifkan.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        if not user.email:
-            return Response(
-                {'status': 'error', 'message': 'Tiada alamat e-mel untuk akaun ini.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        if user.is_active or not user.email:
+            return Response({'status': 'success', 'message': 'Jika akaun wujud, e-mel pengesahan akan dihantar.'})
 
         token_obj = EmailVerificationToken.generate_for_user(user)
         _send_verification_email(user, token_obj)
@@ -645,7 +626,10 @@ class PasswordResetRequestView(views.APIView):
         # Generate a secure token
         token = password_reset_token_generator.make_token(user)
         uid = user.pk
-        reset_url = f"{getattr(settings, 'SITE_URL', 'http://localhost:8000')}/admin.html?reset_password=true&uid={uid}&token={token}"
+        from django.utils.http import urlsafe_base64_encode
+        from django.utils.encoding import force_bytes
+        uidb64 = urlsafe_base64_encode(force_bytes(uid))
+        reset_url = f"{getattr(settings, 'SITE_URL', 'http://localhost:8000')}/reset-password/{uidb64}/{token}/"
 
         _send_password_reset_email(user, reset_url)
         logger.info(f"PASSWORD RESET REQUESTED: User={user.username}, Email={email}")
@@ -698,9 +682,11 @@ class PasswordResetConfirmView(views.APIView):
         user.set_password(new_password)
         user.save()
 
-        # Invalidate any existing sessions for this user
-        # We can't easily target user-specific sessions, but the password change
-        # invalidates the reset token (which includes the password hash)
+        from django.contrib.sessions.models import Session
+        Session.objects.filter(
+            expire_date__gte=timezone.now(),
+            session_data__contains=str(user.pk)
+        ).delete()
 
         logger.info(f"PASSWORD RESET COMPLETED: User={user.username}")
         return Response({

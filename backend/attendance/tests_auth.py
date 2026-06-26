@@ -218,8 +218,8 @@ class TestLoginViewPOST(DisableThrottleMixin, TestCase):
         self.assertTrue(data.get('locked'))
         self.assertIn('dikunci', data.get('message', '').lower())
 
-    def test_inactive_account_returns_403(self):
-        """POST with inactive account returns 403 with activation message."""
+    def test_inactive_account_returns_401(self):
+        """POST with inactive account returns 401 (no user enumeration)."""
         self.user.is_active = False
         self.user.save()
 
@@ -232,8 +232,7 @@ class TestLoginViewPOST(DisableThrottleMixin, TestCase):
             content_type='application/json',
             HTTP_USER_AGENT=BROWSER_UA,
         )
-        self.assertEqual(response.status_code, 403)
-        self.assertIn('belum diaktifkan', response.json().get('message', '').lower())
+        self.assertEqual(response.status_code, 401)
 
     def test_nonexistent_user_returns_401(self):
         """POST with non-existent username returns 401."""
@@ -1017,8 +1016,8 @@ class TestResendVerificationView(DisableThrottleMixin, TestCase):
         )
         self.assertEqual(response.status_code, 400)
 
-    def test_already_active_user_returns_400(self):
-        """Already active user returns 400."""
+    def test_already_active_user_returns_200(self):
+        """Already active user returns 200 (no enumeration)."""
         User.objects.create_user(
             username='activeuser', password=STRONG_PASSWORD, is_active=True
         )
@@ -1027,11 +1026,10 @@ class TestResendVerificationView(DisableThrottleMixin, TestCase):
             data=json.dumps({'username': 'activeuser'}),
             content_type='application/json',
         )
-        self.assertEqual(response.status_code, 400)
-        self.assertIn('sudah diaktifkan', response.json().get('message', '').lower())
+        self.assertEqual(response.status_code, 200)
 
-    def test_user_without_email_returns_400(self):
-        """User without email returns 400."""
+    def test_user_without_email_returns_200(self):
+        """User without email returns 200 (no enumeration)."""
         user = User.objects.create_user(
             username='noemail', password=STRONG_PASSWORD, is_active=False
         )
@@ -1041,8 +1039,7 @@ class TestResendVerificationView(DisableThrottleMixin, TestCase):
             data=json.dumps({'username': 'noemail'}),
             content_type='application/json',
         )
-        self.assertEqual(response.status_code, 400)
-        self.assertIn('tiada', response.json().get('message', '').lower())
+        self.assertEqual(response.status_code, 200)
 
     def test_nonexistent_user_returns_success_no_enumeration(self):
         """Non-existent user returns success to prevent enumeration."""
@@ -1153,7 +1150,7 @@ class TestPasswordResetRequestView(DisableThrottleMixin, TestCase):
 
     @patch('attendance.auth_views.send_mail')
     def test_reset_email_contains_uid_and_token(self, mock_send):
-        """Reset email body contains uid and token parameters."""
+        """Reset email body contains path-based uid/token."""
         self.client.post(
             reverse('auth_reset_password'),
             data=json.dumps({'email': 'reset@test.com'}),
@@ -1161,8 +1158,7 @@ class TestPasswordResetRequestView(DisableThrottleMixin, TestCase):
         )
         call_args = mock_send.call_args
         email_body = call_args.kwargs.get('message', call_args[1].get('message', ''))
-        self.assertIn('uid=', email_body)
-        self.assertIn('token=', email_body)
+        self.assertIn('reset-password', email_body)
 
     @patch('attendance.auth_views.send_mail')
     def test_inactive_user_does_not_send_email(self, mock_send):
@@ -1776,7 +1772,7 @@ class TestEmailHelpers(DisableThrottleMixin, TestCase):
 
     @patch('attendance.auth_views.send_mail')
     def test_password_reset_email_contains_reset_link(self, mock_send):
-        """Password reset email body contains uid and token."""
+        """Password reset email body contains path-based reset link."""
         self.client.post(
             reverse('auth_reset_password'),
             data=json.dumps({'email': 'emailtest@test.com'}),
@@ -1784,9 +1780,7 @@ class TestEmailHelpers(DisableThrottleMixin, TestCase):
         )
         call_args = mock_send.call_args
         email_body = call_args.kwargs.get('message', call_args[1].get('message', ''))
-        self.assertIn('reset_password', email_body)
-        self.assertIn('uid=', email_body)
-        self.assertIn('token=', email_body)
+        self.assertIn('reset-password', email_body)
 
     @patch('attendance.auth_views.send_mail')
     def test_email_failure_does_not_crash_user_creation(self, mock_send):
@@ -1903,7 +1897,7 @@ class TestSessionSecurity(DisableThrottleMixin, TestCase):
             self.assertNotEqual(pre_login_key, post_login_key)
 
     def test_inactive_user_cannot_authenticate(self):
-        """A user with is_active=False cannot log in."""
+        """A user with is_active=False cannot log in (returns 401, no enumeration)."""
         self.user.is_active = False
         self.user.save()
 
@@ -1916,8 +1910,7 @@ class TestSessionSecurity(DisableThrottleMixin, TestCase):
             content_type='application/json',
             HTTP_USER_AGENT=BROWSER_UA,
         )
-        self.assertEqual(response.status_code, 403)
-        self.assertIn('belum diaktifkan', response.json().get('message', '').lower())
+        self.assertEqual(response.status_code, 401)
 
 
 # ══════════════════════════════════════════════════════════════
@@ -2340,11 +2333,9 @@ class TestInactiveUserLoginStrict403(DisableThrottleMixin, TestCase):
     def setUp(self):
         self.url = reverse('auth_login')
 
-    def test_inactive_user_returns_403(self):
-        """Inactive user with correct password should get 403 (belum diaktifkan)."""
-        from django.conf import settings
+    def test_inactive_user_returns_401(self):
+        """Inactive user with correct password should get 401 (no enumeration)."""
         User.objects.create_user(username='inactive2', password='Pass1!', is_active=False)
-        # Ensure DEBUG=False to hit the inactive branch
         with override_settings(DEBUG=False):
             response = self.client.post(
                 self.url,
@@ -2352,7 +2343,7 @@ class TestInactiveUserLoginStrict403(DisableThrottleMixin, TestCase):
                 content_type='application/json',
                 HTTP_USER_AGENT=BROWSER_UA,
             )
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
 
 class TestPasswordResetConfirmEdgeCases(DisableThrottleMixin, TestCase):

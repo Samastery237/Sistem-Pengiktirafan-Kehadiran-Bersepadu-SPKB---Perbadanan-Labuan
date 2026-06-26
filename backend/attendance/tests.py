@@ -1044,8 +1044,7 @@ class TestSessionSecurity(DisableThrottleMixin, TestCase):
         resp = self.client.post(reverse('auth_login'), data=json.dumps({
             'username': 'session', 'password': 'TestPass1!'
         }), content_type='application/json')
-        self.assertEqual(resp.status_code, 403)
-        self.assertIn('belum diaktifkan', resp.json().get('message', '').lower())
+        self.assertEqual(resp.status_code, 401)
 
 
 class TestCSRFRotation(DisableThrottleMixin, TestCase):
@@ -1123,7 +1122,7 @@ class TestEmailVerification(DisableThrottleMixin, TestCase):
         resp = self.client.post(reverse('auth_login'), data=json.dumps({
             'username': 'blocked', 'password': 'GoodPass1!'
         }), content_type='application/json')
-        self.assertEqual(resp.status_code, 403)
+        self.assertEqual(resp.status_code, 401)
 
     def test_verify_email_with_valid_token(self):
         """A valid verification token should activate the user."""
@@ -1196,12 +1195,12 @@ class TestEmailVerification(DisableThrottleMixin, TestCase):
         }), content_type='application/json')
         self.assertEqual(resp.status_code, 200)
 
-    def test_resend_verification_for_active_user_fails(self):
-        """Resending verification for an already active user should fail."""
+    def test_resend_verification_for_active_user_returns_success(self):
+        """Resending verification for an already active user returns success (no enumeration)."""
         resp = self.client.post(reverse('auth_resend_verification'), data=json.dumps({
             'username': 'super'
         }), content_type='application/json')
-        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(resp.status_code, 200)
 
     def test_resend_verification_nonexistent_user_no_enumeration(self):
         """Requesting resend for non-existent user should not reveal existence."""
@@ -2312,8 +2311,8 @@ class TestUserCreationEdgeCases(DisableThrottleMixin, TestCase):
 class TestResendVerificationEdgeCases(DisableThrottleMixin, TestCase):
     """TDD: ResendVerificationView branches not covered by existing tests."""
 
-    def test_existing_user_with_no_email_returns_400(self):
-        """An inactive user without an email address should get 400."""
+    def test_existing_user_with_no_email_returns_200(self):
+        """An inactive user without an email address should get 200 (no enumeration)."""
         user = User.objects.create_user(
             username='noemailresend', password='GoodPass1!', is_active=False
         )
@@ -2322,8 +2321,7 @@ class TestResendVerificationEdgeCases(DisableThrottleMixin, TestCase):
         resp = self.client.post(reverse('auth_resend_verification'), data=json.dumps({
             'username': 'noemailresend'
         }), content_type='application/json')
-        self.assertEqual(resp.status_code, 400)
-        self.assertIn('tiada', resp.json().get('message', '').lower())
+        self.assertEqual(resp.status_code, 200)
 
     def test_verification_email_not_sent_for_nonexistent_user(self):
         """send_mail should NOT be called for a non-existent user."""
@@ -2692,17 +2690,15 @@ class TestPasswordResetRequestEmail(DisableThrottleMixin, TestCase):
         mock_send.assert_called_once()
 
     def test_reset_email_contains_token_link(self):
-        """The reset email should contain a link with uid and token."""
+        """The reset email should contain a reset-password link (path-based)."""
         with patch('attendance.auth_views.send_mail') as mock_send:
             self.client.post(reverse('auth_reset_password'), data=json.dumps({
                 'email': 'resetemail@test.com'
             }), content_type='application/json')
-        # Verify the email body contains the reset URL pattern
+        # Verify the email body contains the reset URL pattern (path-based, not query params)
         call_args = mock_send.call_args
         email_body = call_args.kwargs.get('message', call_args[1].get('message', ''))
-        self.assertIn('reset_password', email_body)
-        self.assertIn('uid=', email_body)
-        self.assertIn('token=', email_body)
+        self.assertIn('reset-password', email_body)
 
     def test_reset_password_logs_event(self):
         """Password reset request should produce a security log entry."""

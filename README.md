@@ -22,11 +22,18 @@
 
 ---
 
-## 📖 What the Project Does
+## 📖 What the Project Does / Mengenai Projek
 
-**Sistem Pengiktirafan Kehadiran Bersepadu (SPKB)** is a complete, end-to-end web platform developed for **Perbadanan Labuan**. It modernizes the entire lifecycle of government programs, training sessions, and corporate events.
+**Sistem Pengiktirafan Kehadiran Bersepadu (SPKB)** is a complete, enterprise-grade digital platform developed for **Perbadanan Labuan**. It modernizes the entire lifecycle of government programs, training sessions, and corporate events by shifting from manual, paper-based tracking to a fully automated, secure, and green (paperless) solution. 
 
-Instead of relying on paper sign-in sheets and manually printing certificates, SPKB digitizes the entire workflow. The system features a powerful **Admin Dashboard** for organizing events and tracking attendees, paired with a beautiful, responsive **Public Portal** where participants can mark their attendance (via digital links/QR codes) and securely download their digitally signed e-Certificates.
+The system features a powerful **Admin Dashboard** for organizing events and tracking attendees in real-time, paired with a beautiful, responsive **Public Portal** where participants can mark their attendance via digital links or QR codes. Once attendance is confirmed, the system's smart engine automatically generates and distributes securely signed e-Certificates (e-Sijil).
+
+---
+
+### 🇲🇾 Hubisan Korporat (About - Malay)
+> *Sistem Pengiktirafan Kehadiran Bersepadu (SPKB) merupakan platform digital inovatif bertaraf perusahaan yang dibangunkan khas untuk Perbadanan Labuan. Ia direka bentuk untuk menyelaraskan dan mengautomasikan sepenuhnya pengurusan kehadiran bagi pelbagai acara, sesi latihan, dan program rasmi.* 
+>
+> *Sistem rintis ini mengintegrasikan teknologi pemantauan kehadiran masa nyata dengan enjin penjanaan sijil digital (e-Sijil) pintar yang disokong oleh ciri keselamatan ketat. Dengan mendigitalkan proses konvensional, SPKB bertujuan memperkasa tadbir urus modal insan melalui peningkatan kecekapan operasi, memastikan ketelusan pelaporan data, serta menyokong inisiatif hijau tanpa kertas (paperless) sejajar dengan wawasan transformasi pendigitalan sektor awam.*
 
 The project is a full-stack solution encompassing a highly secure Django backend and a blazing-fast, lightweight Vanilla JavaScript/HTML5 frontend.
 

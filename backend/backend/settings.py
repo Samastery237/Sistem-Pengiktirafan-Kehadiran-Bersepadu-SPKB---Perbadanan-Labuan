@@ -94,7 +94,7 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': os.environ.get('DJANGO_DB_ENGINE', 'django.db.backends.sqlite3'),
-        'NAME': os.environ.get('DJANGO_DB_NAME', str(BASE_DIR / 'db.sqlite3')),
+        'NAME': os.environ.get('DJANGO_DB_PATH', os.environ.get('DJANGO_DB_NAME', str(BASE_DIR / 'db.sqlite3'))),
         'USER': os.environ.get('DJANGO_DB_USER', ''),
         'PASSWORD': os.environ.get('DJANGO_DB_PASSWORD', ''),
         'HOST': os.environ.get('DJANGO_DB_HOST', ''),

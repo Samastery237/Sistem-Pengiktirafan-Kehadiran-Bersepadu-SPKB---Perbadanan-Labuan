@@ -442,7 +442,7 @@ class TestStatsDetailIntegration(DisableThrottleMixin, TestCase):
         data = response.json()
         self.assertIn('daily_counts', data)
         # Today's count should be >= 3
-        today_str = timezone.now().strftime('%Y-%m-%d')
+        today_str = timezone.localdate().isoformat()
         today_counts = [e for e in data['daily_counts'] if e['date'] == today_str]
         self.assertTrue(len(today_counts) > 0)
         self.assertGreaterEqual(today_counts[0]['count'], 3)

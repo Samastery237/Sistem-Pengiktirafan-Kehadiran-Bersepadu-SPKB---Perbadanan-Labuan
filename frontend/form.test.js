@@ -1,9 +1,11 @@
-const { test, expect } = require('@playwright/test');
+/**
+ * @jest-environment jsdom
+ */
 const { formatIC, formatPhone } = require('./js/form.js');
 
-test.describe('form.js Input Formatters', () => {
-    
-  test.describe('formatIC', () => {
+describe('form.js Input Formatters', () => {
+
+  describe('formatIC', () => {
     test('should format a valid 12 digit IC correctly', () => {
       expect(formatIC('900101123456')).toBe('900101-12-3456');
     });
@@ -18,7 +20,7 @@ test.describe('form.js Input Formatters', () => {
     });
   });
 
-  test.describe('formatPhone', () => {
+  describe('formatPhone', () => {
     test('should strip alphabetic characters', () => {
       expect(formatPhone('012abc3456789')).toBe('0123456789');
     });

@@ -608,9 +608,9 @@ class TestAbuseProtectionMiddleware(TestCase):
 
     def test_rate_limit_headers_for_unauthenticated(self):
         """Unauthenticated requests to /api/ should include X-RateLimit headers."""
-        # Use health endpoint (GET-allowed, public) to test unauthenticated rate limit headers
+        # Use login endpoint (GET-allowed, public) to test unauthenticated rate limit headers
         response = self.client.get(
-            reverse('health_check'),
+            reverse('auth_login'),
             HTTP_USER_AGENT=BROWSER_UA,
         )
         # Unauthenticated requests get rate limit headers from AbuseProtectionMiddleware
@@ -631,17 +631,17 @@ class TestAbuseProtectionMiddleware(TestCase):
     def test_skips_non_api_paths(self):
         """AbuseProtectionMiddleware should NOT protect non-/api/ paths."""
         response = self.client.get(
-            reverse('health_check'),
+            '/non-api/test/',
             HTTP_USER_AGENT=BROWSER_UA,
         )
-        # Health check is at /api/attendance/health/ (starts with /api/), so it IS protected
-        self.assertIn('X-RateLimit-Limit', response)
+        # Non-API paths should not get abuse protection headers
+        self.assertNotIn('X-RateLimit-Limit', response)
 
     def test_empty_ua_blocked_for_unauthenticated(self):
         """Unauthenticated requests with empty UA should be blocked (429)."""
-        # Use health endpoint (GET-allowed, public) to test UA blocking
+        # Use login endpoint (GET-allowed, public) to test UA blocking
         response = self.client.get(
-            reverse('health_check'),
+            reverse('auth_login'),
             HTTP_USER_AGENT='',
         )
         # Empty UA from unauthenticated source should be blocked
@@ -650,7 +650,7 @@ class TestAbuseProtectionMiddleware(TestCase):
     def test_curl_ua_blocked_for_unauthenticated(self):
         """Unauthenticated requests with curl UA should be blocked (429)."""
         response = self.client.get(
-            reverse('health_check'),
+            reverse('auth_login'),
             HTTP_USER_AGENT='curl/7.68.0',
         )
         self.assertEqual(response.status_code, 429)
@@ -1435,7 +1435,7 @@ class TestGetRemainingRequests(TestCase):
         """Should return ABUSE_MAX_REQUESTS minus current count."""
         import time
         from django.core.cache import cache
-        from attendance.middleware import ABUSE_MAX_REQUESTS, AbuseProtectionMiddleware
+        from attendance.middleware import ABUSE_MAX_REQUESTS
         middleware = self._get_middleware()
 
         cache.set('abuse:ip:10.0.0.77', {
@@ -1449,7 +1449,7 @@ class TestGetRemainingRequests(TestCase):
 
     def test_remaining_requests_no_cache_returns_max(self):
         """No cache entry should return ABUSE_MAX_REQUESTS."""
-        from attendance.middleware import ABUSE_MAX_REQUESTS, AbuseProtectionMiddleware
+        from attendance.middleware import ABUSE_MAX_REQUESTS
         middleware = self._get_middleware()
 
         remaining = middleware._get_remaining_requests('10.0.0.88')
