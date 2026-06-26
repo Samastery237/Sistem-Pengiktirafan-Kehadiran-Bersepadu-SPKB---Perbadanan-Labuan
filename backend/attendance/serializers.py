@@ -9,7 +9,10 @@ def validate_cert_template(value):
     if not value:
         return value
     try:
-        decoded = base64.b64decode(value, validate=True)
+        raw = value
+        if ',' in raw:
+            raw = raw.split(',', 1)[1]
+        decoded = base64.b64decode(raw, validate=True)
         if len(decoded) > 5 * 1024 * 1024:
             raise serializers.ValidationError("Saiz imej sijil mesti kurang daripada 5MB.")
         Image.open(BytesIO(decoded)).verify()

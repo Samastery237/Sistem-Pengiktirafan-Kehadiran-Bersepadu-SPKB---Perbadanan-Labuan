@@ -301,15 +301,15 @@
               <div class="pos-grid">
                 <div>
                   <label class="form-label" for="name-x" style="font-size:0.72rem;">X (piksel)</label>
-                  <input type="number" id="name-x" class="form-input" value="500" min="0" onchange="saveSettings()" />
+                  <input type="number" id="name-x" class="form-input" value="500" min="0" oninput="drawSettingsPreview()" onchange="saveSettings()" />
                 </div>
                 <div>
                   <label class="form-label" for="name-y" style="font-size:0.72rem;">Y (piksel)</label>
-                  <input type="number" id="name-y" class="form-input" value="360" min="0" onchange="saveSettings()" />
+                  <input type="number" id="name-y" class="form-input" value="360" min="0" oninput="drawSettingsPreview()" onchange="saveSettings()" />
                 </div>
               </div>
               <label class="form-label" style="font-size:0.72rem; margin-top:0.5rem;">Saiz Fon / Font Size</label>
-              <input type="number" id="name-size" class="form-input" value="42" min="10" max="120" onchange="saveSettings()" />
+              <input type="number" id="name-size" class="form-input" value="42" min="10" max="120" oninput="drawSettingsPreview()" onchange="saveSettings()" />
             </div>
             <div style="margin-bottom:1rem;">
               <label class="form-label" style="margin-bottom:0.5rem;"><i data-lucide="id-card"></i> No. IC</label>
@@ -321,33 +321,42 @@
                 <div class="pos-grid">
                   <div>
                     <label class="form-label" for="ic-x" style="font-size:0.72rem;">X (piksel)</label>
-                    <input type="number" id="ic-x" class="form-input" value="500" min="0" onchange="saveSettings()" />
+                    <input type="number" id="ic-x" class="form-input" value="500" min="0" oninput="drawSettingsPreview()" onchange="saveSettings()" />
                   </div>
                   <div>
                     <label class="form-label" for="ic-y" style="font-size:0.72rem;">Y (piksel)</label>
-                    <input type="number" id="ic-y" class="form-input" value="420" min="0" onchange="saveSettings()" />
+                    <input type="number" id="ic-y" class="form-input" value="420" min="0" oninput="drawSettingsPreview()" onchange="saveSettings()" />
                   </div>
                 </div>
                 <label class="form-label" style="font-size:0.72rem; margin-top:0.5rem;">Saiz Fon IC</label>
-                <input type="number" id="ic-size" class="form-input" value="28" min="10" max="80" onchange="saveSettings()" />
+                <input type="number" id="ic-size" class="form-input" value="28" min="10" max="80" oninput="drawSettingsPreview()" onchange="saveSettings()" />
               </div>
             </div>
             <div>
               <label class="form-label" style="margin-bottom:0.5rem;"><i data-lucide="palette"></i> Warna Teks / Text Color</label>
               <div class="color-row">
-                <input type="color" id="text-color" value="#1a1a2e" onchange="saveSettings()" />
+                <input type="color" id="text-color" value="#1a1a2e" oninput="drawSettingsPreview()" onchange="saveSettings()" />
                 <span style="font-size:0.82rem; color:var(--text-muted);">Warna nama &amp; IC pada sijil</span>
               </div>
             </div>
             <div style="margin-top:1rem;">
               <label class="form-label" style="font-size:0.72rem; margin-bottom:0.5rem;">Jenis Fon / Font Family</label>
-              <select id="font-family" class="form-input" onchange="saveSettings()" style="cursor:pointer;">
+              <select id="font-family" class="form-input" onchange="saveSettings(); drawSettingsPreview()" style="cursor:pointer;">
                 <option value="Georgia, serif">Georgia (Serif)</option>
                 <option value="'Times New Roman', serif">Times New Roman</option>
                 <option value="Arial, sans-serif">Arial (Sans-serif)</option>
                 <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
                 <option value="Palatino, serif" selected>Palatino (Elegant)</option>
               </select>
+            </div>
+          </div>
+
+          <!-- Live Certificate Preview -->
+          <div class="card" style="grid-column: 1 / -1;">
+            <h3 style="font-size:1rem; margin-bottom:0.5rem;"><i data-lucide="eye"></i> Pratonton Langsung / Live Preview</h3>
+            <p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:1rem;">Gunakan teks contoh untuk melihat perubahan kedudukan secara langsung.</p>
+            <div style="text-align:center;">
+              <canvas id="settings-preview-canvas" class="cert-canvas" style="max-width: 100%; border-radius: var(--radius-sm);"></canvas>
             </div>
           </div>
 
@@ -452,7 +461,7 @@
       </div>
       <div class="form-group">
         <label class="form-label" for="edit-ic">No. IC</label>
-        <input type="text" id="edit-ic" class="form-input" />
+        <input type="text" id="edit-ic" class="form-input" oninput="this.value = formatIC(this.value)" />
       </div>
       <div class="form-group">
         <label class="form-label" for="edit-phone">No. Telefon</label>
@@ -514,7 +523,13 @@
       </div>
       <div class="form-group" style="margin-bottom:1rem;">
         <label class="form-label">Kata Laluan</label>
-        <input type="password" id="new-user-password" class="form-input" required />
+        <div style="position: relative;">
+          <input type="password" id="new-user-password" class="form-input" required style="padding-right: 2.5rem;" autocomplete="new-password" />
+          <button type="button" onclick="togglePasswordVisibility('new-user-password')" style="position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 0.2rem; display: flex; align-items: center; justify-content: center;">
+            <i data-lucide="eye" id="new-user-password-eye"></i>
+            <i data-lucide="eye-off" id="new-user-password-eye-off" style="display: none;"></i>
+          </button>
+        </div>
       </div>
       <div class="form-group" style="margin-bottom:1rem;">
         <label class="form-label">Peranan</label>
@@ -582,7 +597,7 @@
   <!-- Toast -->
   <div class="toast" id="toast" role="alert"></div>
 
-  <script src="js/admin.js?v=4"></script>
+  <script src="js/admin.js?v=6"></script>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <script>
     lucide.createIcons();

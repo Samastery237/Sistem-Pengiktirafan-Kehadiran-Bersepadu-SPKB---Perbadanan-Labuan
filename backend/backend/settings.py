@@ -55,6 +55,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -167,6 +168,11 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+STORAGES = {
+    'staticfiles': {
+        'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+    },
+}
 
 # CORS & CSRF settings
 _default_cors = 'http://localhost:3000,http://127.0.0.1:3000,http://127.0.0.1:8000,http://localhost:8000,http://127.0.0.1:5500,http://localhost:5500,http://127.0.0.1:5501,http://localhost:5501'
@@ -186,19 +192,22 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Use database-backed cache by default (no external dependencies required).
 # In production, swap to Redis by setting DJANGO_CACHE_BACKEND=redis and
 # installing django-redis.
+_cache_backend = os.environ.get(
+    'DJANGO_CACHE_BACKEND',
+    'django.core.cache.backends.db.DatabaseCache'
+)
 CACHES = {
     'default': {
-        'BACKEND': os.environ.get(
-            'DJANGO_CACHE_BACKEND',
-            'django.core.cache.backends.db.DatabaseCache'
-        ),
+        'BACKEND': _cache_backend,
         'LOCATION': os.environ.get('DJANGO_CACHE_LOCATION', 'django_cache'),
         'TIMEOUT': int(os.environ.get('DJANGO_CACHE_TIMEOUT', '300')),
-        'OPTIONS': {
-            'MAX_ENTRIES': int(os.environ.get('DJANGO_CACHE_MAX_ENTRIES', '10000')),
-        },
     }
 }
+# MAX_ENTRIES is only valid for DatabaseCache and LocMemCache
+if 'DatabaseCache' in _cache_backend or 'LocMemCache' in _cache_backend:
+    CACHES['default']['OPTIONS'] = {
+        'MAX_ENTRIES': int(os.environ.get('DJANGO_CACHE_MAX_ENTRIES', '10000')),
+    }
 
 # Create the cache table if using DatabaseCache
 if CACHES['default']['BACKEND'] == 'django.core.cache.backends.db.DatabaseCache':
@@ -223,7 +232,7 @@ REST_FRAMEWORK = {
         'user': '50000/day',        # General protection for authenticated users
         # Authentication endpoints
         'login': '500/minute',      # Strict brute-force protection for the login endpoint
-        'create_user': '10/hour', # Account creation
+        'create_user': '100/hour', # Account creation
         'password_reset': '3/hour',  # Password reset requests
         # Expensive operations
         'submit': '30/minute',    # Form submissions (was 200 — too permissive)
@@ -257,7 +266,6 @@ SESSION_SAVE_EVERY_REQUEST = True  # Refresh session timeout on every request
 PASSWORD_RESET_TIMEOUT = 3600
 
 # Global Security Headers
-SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
 SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
@@ -266,8 +274,8 @@ SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
 CSRF_COOKIE_HTTPONLY = False
 CSRF_COOKIE_SAMESITE = 'Lax'
 
-# Require email verification for new accounts
-EMAIL_VERIFICATION_REQUIRED = True
+# Require email verification for new accounts (disable for internal/offline use)
+EMAIL_VERIFICATION_REQUIRED = os.environ.get('DJANGO_EMAIL_VERIFICATION_REQUIRED', 'True').lower() == 'true'
 
 # ------------------------------------------------------------------------------
 # LOGGING
@@ -361,7 +369,7 @@ try:
         sentry_sdk.init(
             dsn=SENTRY_DSN,
             integrations=[DjangoIntegration()],
-            traces_sample_rate=1.0,
+            traces_sample_rate=0.1,  # 10% sampling — 100% is excessive overhead
             send_default_pii=False  # Never send PII to third-party services
         )
 except ImportError:

@@ -358,6 +358,11 @@ async function api(endpoint, opts = {}) {
     return Promise.reject('Unauthorized');
   }
 
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ message: 'HTTP ' + res.status }));
+    return Promise.reject(err.message || JSON.stringify(err));
+  }
+
   if (endpoint.includes('export')) return res;
 
   // Guard against non-JSON responses (e.g., HTML error pages)
@@ -681,12 +686,19 @@ async function deleteRecord(id) {
 // ──────────────────────────────────────────────
 // Participant Edit Modal
 // ──────────────────────────────────────────────
+function formatIC(value) {
+  const digits = (value || '').replace(/\D/g, '').slice(0, 12);
+  if (digits.length <= 6) return digits;
+  if (digits.length <= 8) return `${digits.slice(0, 6)}-${digits.slice(6)}`;
+  return `${digits.slice(0, 6)}-${digits.slice(6, 8)}-${digits.slice(8)}`;
+}
+
 function openEditModal(id) {
   const record = cachedRecords.find(r => r.id === id);
   if (!record) return;
   document.getElementById('edit-id').value = record.id;
   document.getElementById('edit-fullname').value = record.fullname;
-  document.getElementById('edit-ic').value = record.ic_number;
+  document.getElementById('edit-ic').value = formatIC(record.ic_number);
   document.getElementById('edit-phone').value = record.phone || '';
   document.getElementById('edit-email').value = record.email || '';
   document.getElementById('edit-org').value = record.organization || '';
@@ -837,6 +849,32 @@ async function drawCertificate(p) {
 
 function loadImage(src) {
   return new Promise((res, rej) => { const img = new Image(); img.onload = () => res(img); img.onerror = rej; img.src = src; });
+}
+
+async function drawSettingsPreview() {
+  const canvas = document.getElementById('settings-preview-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const g = id => document.getElementById(id)?.value;
+  const gn = id => parseInt(document.getElementById(id)?.value) || 0;
+  const s = {
+    nameX: gn('name-x'), nameY: gn('name-y'), nameFontSize: gn('name-size'),
+    icX: gn('ic-x'), icY: gn('ic-y'), icFontSize: gn('ic-size'),
+    showIC: true, textColor: g('text-color') || '#000000',
+    fontFamily: g('font-family') || 'Arial, sans-serif'
+  };
+  const tpl = currentFolderData?.cert_template || null;
+  const example = { fullname: 'Nama Peserta Contoh', ic_number: '000101-01-0001' };
+  if (tpl) {
+    const bg = await loadImage(tpl);
+    canvas.width = bg.naturalWidth || bg.width;
+    canvas.height = bg.naturalHeight || bg.height;
+    ctx.drawImage(bg, 0, 0, canvas.width, canvas.height);
+  } else {
+    canvas.width = 1000; canvas.height = 707;
+    drawDefaultCertBg(ctx, 1000, 707);
+  }
+  overlayText(ctx, example, s, canvas.width, canvas.height);
 }
 
 function overlayText(ctx, p, s, w, h) {
@@ -1111,6 +1149,7 @@ async function saveSettings() {
         }
       });
       if (selectedParticipant) drawCertificate(selectedParticipant);
+      drawSettingsPreview();
     }
   } catch(e) {
     showToast('<i class="fa-solid fa-circle-xmark"></i> Ralat menyimpan tetapan.', 'error');
@@ -1137,6 +1176,7 @@ async function loadSettings() {
     const img = document.getElementById('template-preview-img'); 
     if (img) img.style.display = 'none';
   }
+  drawSettingsPreview();
 }
 
 // ═══════════════════════════════════════
@@ -1165,6 +1205,7 @@ function handleTemplateUpload(e) {
         if (el) { el.src = data; el.style.display = 'block'; }
         showToast('<i class="fa-solid fa-circle-check"></i> Templat dimuat naik ke folder!', 'success');
         if (selectedParticipant) drawCertificate(selectedParticipant);
+        drawSettingsPreview();
       }).catch(() => showToast('<i class="fa-solid fa-circle-xmark"></i> Gagal memuat naik.', 'error'));
     };
     img.src = ev.target.result;
@@ -1181,6 +1222,7 @@ function clearTemplate() {
     document.getElementById('template-upload').value = '';
     showToast('<i class="fa-solid fa-trash"></i>️ Templat dipadam dari folder.', 'info');
     if (selectedParticipant) drawCertificate(selectedParticipant);
+    drawSettingsPreview();
   });
 }
 
@@ -1304,7 +1346,13 @@ function deleteUser(id, username) {
 function openAddUserModal() {
   document.getElementById('new-user-username').value = '';
   document.getElementById('new-user-password').value = '';
+  document.getElementById('new-user-password').type = 'password';
   document.getElementById('new-user-role').value = 'false';
+  // Clear again after a tick to fight browser autofill
+  setTimeout(() => {
+    document.getElementById('new-user-password').value = '';
+    document.getElementById('new-user-password').type = 'password';
+  }, 100);
   
   // Populate departments
   const deptSelect = document.getElementById('new-user-dept');
@@ -1350,7 +1398,8 @@ async function submitAddUser() {
       closeAddUserModal();
       loadUsers();
     } else {
-      showToast('<i class="fa-solid fa-xmark"></i> Ralat: ' + res.message, 'error');
+      const msg = res.message || res.detail || 'Ralat tidak diketahui. Sila cuba lagi.';
+      showToast('<i class="fa-solid fa-xmark"></i> Ralat: ' + msg, 'error');
     }
   } catch (e) {
     showToast('<i class="fa-solid fa-xmark"></i> Ralat rangkaian.', 'error');

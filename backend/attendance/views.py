@@ -626,6 +626,7 @@ class FolderDetailView(views.APIView):
             'id': folder.id,
             'name': folder.name,
             'cert_delay': folder.cert_delay,
+            'cert_template': folder.cert_template,
         })
 
     def delete(self, request, folder_id):

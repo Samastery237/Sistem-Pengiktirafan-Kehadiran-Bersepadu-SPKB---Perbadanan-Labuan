@@ -74,8 +74,8 @@ class SecurityLoggingMiddleware:
             "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; "
             "img-src 'self' data: https:; "
             "font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; "
-            "frame-src 'self' https://maps.google.com; "
-            "connect-src 'self'; "
+            "frame-src 'self' https://maps.google.com https://www.google.com; "
+            "connect-src 'self' https://unpkg.com https://cdnjs.cloudflare.com; "
             "form-action 'self'; "
             "base-uri 'self'"
         )

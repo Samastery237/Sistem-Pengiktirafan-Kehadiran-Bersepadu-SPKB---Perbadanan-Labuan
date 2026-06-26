@@ -1,48 +1,59 @@
-# Use Python 3.12 slim for a smaller footprint
-FROM python:3.12-slim
+FROM python:3.12-alpine AS builder
 
-# Set environment variables
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
-ENV DEBIAN_FRONTEND noninteractive
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
 
-# Install system dependencies required for WeasyPrint and PyCairo
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    libpango-1.0-0 \
-    libharfbuzz0b \
-    libpangoft2-1.0-0 \
-    libcairo2 \
-    libcairo2-dev \
-    pkg-config \
+RUN apk add --no-cache \
+    build-base \
+    pango-dev \
+    cairo-dev \
     libffi-dev \
-    libjpeg-dev \
-    libopenjp2-7-dev \
-    fonts-liberation \
-    && rm -rf /var/lib/apt/lists/*
+    jpeg-dev \
+    zlib-dev \
+    freetype-dev \
+    harfbuzz-dev \
+    musl-dev
 
-# Set working directory
 WORKDIR /app
-
-# Install Python dependencies
 COPY backend/requirements.txt /app/
-RUN pip install --upgrade pip && \
-    pip install -r requirements.txt
+RUN python -m venv /venv && \
+    /venv/bin/pip install --upgrade pip==26.1.2 && \
+    /venv/bin/pip install -r requirements.txt && \
+    rm -rf /root/.cache/pip
 
-# Copy the backend code
-COPY backend /app/backend/
+FROM python:3.12-alpine
 
-# Copy the frontend code (since Django serves it)
-COPY frontend /app/frontend/
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH="/venv/bin:$PATH"
 
-# Set working directory to the backend where manage.py is located
+RUN apk add --no-cache \
+    pango \
+    cairo \
+    harfbuzz \
+    fontconfig \
+    font-liberation \
+    freetype \
+    zlib
+
+COPY --from=builder /venv /venv
+RUN /usr/local/bin/pip install --upgrade pip==26.1.2 && rm -rf /root/.cache/pip
+
+RUN addgroup --system --gid 1001 app && \
+    adduser --system --uid 1001 --ingroup app --home /home/app app && \
+    chmod 755 /home/app
+
+WORKDIR /app
+COPY --chown=app:app backend /app/backend/
+COPY --chown=app:app frontend /app/frontend/
+
 WORKDIR /app/backend
+RUN mkdir -p /app/backend/media /app/backend/staticfiles && \
+    chown -R app:app /app /venv
 
-# Create media and static directories
-RUN mkdir -p /app/backend/media /app/backend/staticfiles
+USER app
 
-# Expose port 8000
 EXPOSE 8000
 
-# Start Gunicorn server
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "3", "backend.wsgi:application"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "3", "--access-logfile", "-", "--error-logfile", "-", "backend.wsgi:application"]

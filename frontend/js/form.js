@@ -42,7 +42,7 @@ let currentLang = 'bm';
 
 // ─── Progress Bar ───
 function updateProgress() {
-  const fields = ['fullname', 'ic', 'phone', 'email', 'organization'];
+  const fields = ['fullname', 'phone', 'email', 'organization'];
   let filled = 0;
   fields.forEach(id => { if (document.getElementById(id)?.value.trim()) filled++; });
   document.getElementById('progress-bar').style.width = Math.round((filled / fields.length) * 100) + '%';
@@ -116,7 +116,7 @@ async function handleSubmit(e) {
   // Validate
   let valid = true;
   valid = setError('fullname', 'error-fullname', !fullname ? t.errName : '') && valid;
-  valid = setError('ic', 'error-ic', !validateIC(ic) ? t.errIC : '') && valid;
+  valid = setError('ic', 'error-ic', !ic || !validateIC(ic) ? t.errIC : '') && valid;
   valid = setError('phone', 'error-phone', !validatePhone(phone) ? t.errPhone : '') && valid;
   valid = setError('email', 'error-email', !validateEmail(email) ? t.errEmail : '') && valid;
   valid = setError('organization', 'error-organization', !organization ? t.errOrg : '') && valid;
@@ -247,4 +247,4 @@ if (typeof document !== 'undefined') {
 // Export for testing
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { formatIC, formatPhone };
-}
+}// TEST_MARKER_1782457780
