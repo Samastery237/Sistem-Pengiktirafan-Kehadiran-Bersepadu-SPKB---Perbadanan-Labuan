@@ -453,13 +453,16 @@ class DepartmentFolderListView(views.APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        excluded = ['Agensi Kerajaan Lain', 'Sektor Swasta / NGO', 'Orang Awam']
         dept = _user_department(request)
         if dept is not None:
             departments = Department.objects.prefetch_related('folders').filter(
                 id=dept.id
             ).order_by('name')
         else:
-            departments = Department.objects.prefetch_related('folders').all().order_by('name')
+            departments = Department.objects.prefetch_related('folders').exclude(
+                name__in=excluded
+            ).order_by('name')
 
         paginator = StandardPagination()
         page = paginator.paginate_queryset(departments, request)
