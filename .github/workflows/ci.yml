@@ -86,7 +86,15 @@ jobs:
       env:
         DJANGO_DEBUG: 'True'
         DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY || 'ci-secret-key-for-github-actions-minimum-50-chars-long-ok' }}
-      run: python manage.py test --verbosity 2
+      run: python manage.py test --verbosity 2 2>&1 | tee /tmp/test_output.txt
+
+    - name: Upload test output
+      if: failure()
+      uses: actions/upload-artifact@v7
+      with:
+        name: backend-test-output
+        path: /tmp/test_output.txt
+        retention-days: 7
 
   e2e-tests:
     name: E2E Tests
@@ -159,7 +167,15 @@ jobs:
         python manage.py shell -c "from django.contrib.auth.models import User; u=User.objects.get(username='admin'); u.set_password('admin123'); u.save()"
 
     - name: Run E2E Tests
-      run: npx playwright test
+      run: npx playwright test 2>&1 | tee /tmp/e2e_output.txt
+
+    - name: Upload E2E test output
+      if: failure()
+      uses: actions/upload-artifact@v7
+      with:
+        name: e2e-test-output
+        path: /tmp/e2e_output.txt
+        retention-days: 7
 
     - name: Upload Test Results
       if: always()
