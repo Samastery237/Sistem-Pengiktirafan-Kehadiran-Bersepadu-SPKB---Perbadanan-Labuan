@@ -16,9 +16,10 @@ export default defineConfig({
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
   ],
   webServer: {
-    command: 'export DJANGO_DB_PATH=/tmp/spkb_test.db && cd backend && venv/bin/python manage.py runserver 0.0.0.0:8000',
+    command: './venv/bin/python manage.py runserver 0.0.0.0:8000',
     url: 'http://127.0.0.1:8000/api/attendance/health/',
     reuseExistingServer: !process.env.CI,
+    cwd: './backend',
     timeout: 60000,
   },
 });

@@ -462,8 +462,46 @@ class UserListView(views.APIView):
 
 
 class UserDetailView(views.APIView):
-    """DELETE: Delete an admin user. Super Admins only. Cannot delete yourself or the last superuser."""
+    """PATCH: Reset password for an admin user. DELETE: Delete an admin user. Super Admins only."""
     permission_classes = [IsAuthenticated]
+
+    def patch(self, request, user_id):
+        if not request.user.is_superuser:
+            return Response({'status': 'error', 'message': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
+
+        new_password = request.data.get('password')
+        if not new_password:
+            return Response(
+                {'status': 'error', 'message': 'Kata laluan diperlukan.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            from django.contrib.auth.password_validation import validate_password
+            validate_password(new_password)
+        except Exception as e:
+            return Response(
+                {'status': 'error', 'message': ' '.join(e.messages if hasattr(e, 'messages') else [str(e)])},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response(
+                {'status': 'error', 'message': 'User not found.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        user.set_password(new_password)
+        user.save(update_fields=['password'])
+
+        ip = get_client_ip(request)
+        logger.info(
+            f"PASSWORD RESET: Admin={request.user.username}, "
+            f"TargetUser={user.username}, IP={ip}"
+        )
+        return Response({'status': 'success', 'message': 'Kata laluan berjaya ditetapkan semula.'})
 
     def delete(self, request, user_id):
         if not request.user.is_superuser:

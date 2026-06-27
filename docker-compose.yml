@@ -18,7 +18,8 @@ services:
       - DJANGO_DB_HOST=db
       - DJANGO_DB_PORT=5432
       - DJANGO_DB_CONN_MAX_AGE=600
-      - DJANGO_EMAIL_VERIFICATION_REQUIRED=true
+      - DJANGO_DB_SSLMODE=prefer
+      - DJANGO_EMAIL_VERIFICATION_REQUIRED=false
       - DJANGO_CACHE_BACKEND=django.core.cache.backends.redis.RedisCache
       - DJANGO_CACHE_LOCATION=redis://:${REDIS_PASSWORD:?Redis password not set}@redis:6379/1
     depends_on:
@@ -33,6 +34,7 @@ services:
         python manage.py collectstatic --noinput --clear &&
         python manage.py createcachetable django_cache || true &&
         python manage.py createsuperuser --noinput --skip-checks || true 2>/dev/null &&
+        python manage.py shell -c \"from django.contrib.auth.models import User; User.objects.filter(is_staff=True, is_active=False).update(is_active=True)\" &&
         gunicorn --bind 0.0.0.0:8000 --workers 3 --access-logfile - --error-logfile - --worker-tmp-dir /dev/shm --forwarded-allow-ips='*' backend.wsgi:application
       "
 

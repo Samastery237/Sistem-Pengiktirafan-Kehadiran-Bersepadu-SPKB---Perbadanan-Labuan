@@ -552,6 +552,30 @@
     </div>
   </div>
 
+  <!-- Reset Password Modal (Super Admin) -->
+  <div id="reset-pw-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:9999; align-items:center; justify-content:center; backdrop-filter:blur(4px);">
+    <div class="card" style="width:100%; max-width:400px; background:var(--bg-card); padding:2rem; border-radius:16px;">
+      <h3 style="margin-bottom:0.5rem; font-size:1.2rem; display:flex; align-items:center; gap:0.5rem;"><i data-lucide="key"></i> Reset Kata Laluan</h3>
+      <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1.5rem;">Menetapkan semula kata laluan untuk <strong id="reset-pw-username"></strong></p>
+      <input type="hidden" id="reset-pw-id" />
+      <div class="form-group" style="margin-bottom:1rem;">
+        <label class="form-label" for="reset-pw-password">Kata Laluan Baharu</label>
+        <div style="position: relative;">
+          <input type="password" id="reset-pw-password" class="form-input" placeholder="Minimum 6 aksara..." minlength="6" style="padding-right: 2.5rem;" onkeydown="if(event.key==='Enter'){event.preventDefault();submitResetPw();}" />
+          <button type="button" onclick="togglePasswordVisibility('reset-pw-password')" style="position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 0.2rem; display: flex; align-items: center; justify-content: center;">
+            <i data-lucide="eye" id="reset-pw-password-eye"></i>
+            <i data-lucide="eye-off" id="reset-pw-password-eye-off" style="display: none;"></i>
+          </button>
+        </div>
+      </div>
+      <div id="reset-pw-error" style="color:#f87171; font-size:0.85rem; margin-bottom:1rem; display:none;"></div>
+      <div style="display:flex; justify-content:center; gap:0.8rem;">
+        <button type="button" class="btn btn-ghost" onclick="closeResetPwModal()" style="flex:1; justify-content:center;">Batal</button>
+        <button type="button" class="btn btn-primary" onclick="submitResetPw()" id="reset-pw-btn" style="flex:1; justify-content:center;"><i data-lucide="key"></i> Reset</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Change Password Modal -->
   <div id="change-password-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:9999; align-items:center; justify-content:center; backdrop-filter:blur(4px);">
     <div class="card" style="width:100%; max-width:400px; background:var(--bg-card); padding:2rem; border-radius:16px;">

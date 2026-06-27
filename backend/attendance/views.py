@@ -454,6 +454,19 @@ class DepartmentFolderListView(views.APIView):
 
     def get(self, request):
         excluded = ['Agensi Kerajaan Lain', 'Sektor Swasta / NGO', 'Orang Awam']
+        for name in [
+            'Pejabat Pengerusi', 'Pejabat Ketua Pegawai Eksekutif', 'Pejabat Timbalan Ketua Pegawai Eksekutif',
+            'Pejabat Penasihat Undang-Undang', 'Jabatan Audit Dalam', 'Jabatan Hal Ehwal Korporat',
+            'Unit Dasar dan Integriti', 'Jabatan Khidmat Pengurusan', 'Pusat Transformasi Bandar (UTC)',
+            'Jabatan Pengurusan Sumber Manusia', 'Unit Perkhidmatan JPSM', 'Unit Latihan JPSM',
+            'Jabatan Kewangan', 'Jabatan Digital Dan Informasi', 'Perpustakaan Awam Labuan',
+            'Jabatan Pembangunan & Kejuruteraan', 'Jabatan Perancangan & Kawalan Bangunan',
+            'Jabatan Sosio Ekonomi', 'Jabatan Pelancongan, Kebudayaan, dan Kesenian', 'Majlis Sukan Labuan',
+            'Unit Penyelarasan, Pemantauan dan Penilaian Impak', 'Jabatan Penilaian dan pengurusan Harta',
+            'Jabatan Perkhidmatan Perbandaran', 'Jabatan Penguatkuasaan', 'Jabatan Pelesenan',
+            'Unit Pelaburan PL', 'Lain-Lain',
+        ]:
+            Department.objects.get_or_create(name=name)
         dept = _user_department(request)
         if dept is not None:
             departments = Department.objects.prefetch_related('folders').filter(

@@ -1300,8 +1300,9 @@ async function loadUsers() {
       res.data.forEach(u => {
         const role = u.is_super ? '<span style="color:var(--accent);">Super Admin</span>' : 'Admin Jabatan';
         const dept = u.department_name || '—';
+        const resetPwBtn = `<button class="btn btn-sm" onclick="openResetPwModal(${u.id}, '${u.username}')" title="Reset Kata Laluan" style="padding:0.4rem; background:transparent; border:1px solid var(--border); color:var(--accent-light); border-radius:6px; display:inline-flex; align-items:center; gap:4px;"><i data-lucide="key" style="width:14px;height:14px;margin:0!important;top:0!important;"></i></button>`;
         const deleteBtn = u.username !== 'admin' ? 
-          `<button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id}, '${u.username}')" style="padding: 0.5rem; display: inline-flex; align-items: center; justify-content: center;"><i data-lucide="trash-2" style="margin: 0 !important; top: 0 !important;"></i></button>` : 
+          `<button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id}, '${u.username}')" style="padding:0.5rem;display:inline-flex;align-items:center;justify-content:center;"><i data-lucide="trash-2" style="margin:0!important;top:0!important;"></i></button>` : 
           '';
           
         tbody.innerHTML += `
@@ -1309,7 +1310,7 @@ async function loadUsers() {
             <td><strong>${u.username}</strong></td>
             <td>${role}</td>
             <td>${dept}</td>
-            <td>${deleteBtn}</td>
+            <td><div style="display:flex;gap:0.4rem;align-items:center;justify-content:center;">${resetPwBtn}${deleteBtn}</div></td>
           </tr>
         `;
       });
@@ -1317,6 +1318,47 @@ async function loadUsers() {
     }
   } catch (e) {
     console.error('Failed to load users', e);
+  }
+}
+
+function openResetPwModal(id, username) {
+  document.getElementById('reset-pw-id').value = id;
+  document.getElementById('reset-pw-username').textContent = username;
+  document.getElementById('reset-pw-password').value = '';
+  document.getElementById('reset-pw-error').style.display = 'none';
+  document.getElementById('reset-pw-modal').style.display = 'flex';
+  setTimeout(() => document.getElementById('reset-pw-password').focus(), 100);
+}
+
+function closeResetPwModal() {
+  document.getElementById('reset-pw-modal').style.display = 'none';
+}
+
+async function submitResetPw() {
+  const id = document.getElementById('reset-pw-id').value;
+  const pw = document.getElementById('reset-pw-password').value;
+  const btn = document.getElementById('reset-pw-btn');
+  const err = document.getElementById('reset-pw-error');
+
+  if (!pw) { err.textContent = 'Sila masukkan kata laluan baharu.'; err.style.display = 'block'; return; }
+
+  btn.disabled = true; btn.textContent = '...';
+
+  try {
+    const res = await api(`users/${id}/`, { method: 'PATCH', body: { password: pw } });
+    if (res && res.status === 'success') {
+      showToast('<i class="fa-solid fa-check"></i> Kata laluan berjaya ditetapkan semula!', 'success');
+      closeResetPwModal();
+    } else {
+      err.textContent = res?.message || 'Ralat menetapkan kata laluan.';
+      err.style.display = 'block';
+    }
+  } catch (e) {
+    err.textContent = e?.message || 'Ralat rangkaian.';
+    err.style.display = 'block';
+  } finally {
+    btn.disabled = false; btn.innerHTML = '<i data-lucide="key"></i> Reset';
+    if (window.lucide) lucide.createIcons();
   }
 }
 
