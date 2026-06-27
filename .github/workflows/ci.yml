@@ -81,43 +81,15 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    - name: Verify Django can start
-      working-directory: ./backend
-      env:
-        DJANGO_DEBUG: 'True'
-        DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY || 'ci-secret-key-for-github-actions-minimum-50-chars-long-ok' }}
-      run: python manage.py check --deploy 2>&1 || python manage.py check 2>&1 || true
-
-    - name: Debug test failure
-      working-directory: ./backend
-      env:
-        DJANGO_DEBUG: 'True'
-        DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY || 'ci-secret-key-for-github-actions-minimum-50-chars-long-ok' }}
-      run: |
-        python -c "
-import sys, os, django
-os.environ['DJANGO_SECRET_KEY'] = 'test-key'
-sys.path.insert(0, '.')
-os.environ['DJANGO_SETTINGS_MODULE'] = 'backend.settings'
-import django
-django.setup()
-print('Django setup OK, version:', django.VERSION)
-from django.conf import settings
-print('DEBUG:', settings.DEBUG)
-print('ALLOWED_HOSTS:', settings.ALLOWED_HOSTS)
-print('SECURE_SSL_REDIRECT:', settings.SECURE_SSL_REDIRECT)
-print('SESSION_COOKIE_SECURE:', settings.SESSION_COOKIE_SECURE)
-" 2>&1 | tail -20
-
     - name: Run Django Tests
       working-directory: ./backend
       env:
         DJANGO_DEBUG: 'True'
         DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY || 'ci-secret-key-for-github-actions-minimum-50-chars-long-ok' }}
-      run: python manage.py test --failfast 2>&1 | tee /tmp/django_test_output.txt
+      run: python manage.py test 2>&1 | tee /tmp/django_test_output.txt
 
     - name: Upload test output
-      if: always()
+      if: failure()
       uses: actions/upload-artifact@v7
       with:
         name: django-test-output
