@@ -16,7 +16,7 @@ export default defineConfig({
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
   ],
   webServer: {
-    command: './venv/bin/python manage.py runserver 0.0.0.0:8000',
+    command: process.env.CI ? 'python manage.py runserver 0.0.0.0:8000' : './venv/bin/python manage.py runserver 0.0.0.0:8000',
     url: 'http://127.0.0.1:8000/api/attendance/health/',
     reuseExistingServer: !process.env.CI,
     cwd: './backend',
