@@ -2,48 +2,13 @@ networks:
   spkb-network:
     driver: bridge
 
-services:
-  web:
-    build: .
-    container_name: spkb_web
-    ports:
-      - "8000:8000"
-    volumes:
-      - media-data:/app/backend/media
-      - static-data:/app/backend/staticfiles
-    env_file:
-      - backend/.env
-    environment:
-      - DJANGO_DEBUG=False
-      - DJANGO_DB_ENGINE=django.db.backends.postgresql
-      - DJANGO_DB_NAME=spkb
-      - DJANGO_DB_USER=spkb
-      - DJANGO_DB_PASSWORD=${POSTGRES_PASSWORD:?Postgres password not set}
-      - DJANGO_DB_HOST=db
-      - DJANGO_DB_PORT=5432
-      - DJANGO_DB_CONN_MAX_AGE=600
-      - DJANGO_DB_SSLMODE=prefer
-      - DJANGO_EMAIL_VERIFICATION_REQUIRED=false
-      - DJANGO_CACHE_BACKEND=django.core.cache.backends.redis.RedisCache
-      - DJANGO_CACHE_LOCATION=redis://:${REDIS_PASSWORD:?Redis password not set}@redis:6379/1
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_started
-    restart: unless-stopped
-    networks:
-      - spkb-network
-    command: >
-      sh -c "
-        python manage.py migrate --noinput &&
-        python manage.py collectstatic --noinput --clear &&
-        python manage.py createcachetable django_cache || true &&
-        python manage.py createsuperuser --noinput --skip-checks || true 2>/dev/null &&
-        python manage.py shell -c \"from django.contrib.auth.models import User; User.objects.filter(is_staff=True, is_active=False).update(is_active=True)\" &&
-        gunicorn --bind 0.0.0.0:8000 --workers 3 --access-logfile - --error-logfile - --worker-tmp-dir /dev/shm --forwarded-allow-ips='*' backend.wsgi:application
-      "
+x-web-env: &web-env
+  DJANGO_DB_HOST: db
+  DJANGO_DB_PORT: 5432
+  DJANGO_DB_PASSWORD: ${POSTGRES_PASSWORD:?Postgres password not set}
+  DJANGO_CACHE_LOCATION: redis://:${REDIS_PASSWORD:?Redis password not set}@redis:6379/1
 
+services:
   db:
     networks:
       - spkb-network
@@ -61,14 +26,85 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
 
   redis:
+    networks:
+      - spkb-network
     image: redis:7-alpine
     container_name: spkb_redis
     command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?Redis password not set}"]
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+
+  init:
+    build: .
+    container_name: spkb_init
+    env_file:
+      - backend/.env
+    environment:
+      <<: *web-env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
     networks:
       - spkb-network
+    command: >
+      sh -c "
+        python manage.py migrate --noinput &&
+        python manage.py collectstatic --noinput --clear &&
+        python manage.py createcachetable django_cache || true &&
+        python manage.py createsuperuser --noinput --skip-checks || true 2>/dev/null &&
+        python manage.py shell -c \"from django.contrib.auth.models import User; User.objects.filter(is_staff=True, is_active=False).update(is_active=True)\"
+      "
+    restart: "no"
+
+  web:
+    build: .
+    container_name: spkb_web
+    ports:
+      - "8000:8000"
+    volumes:
+      - media-data:/app/backend/media
+      - static-data:/app/backend/staticfiles
+    env_file:
+      - backend/.env
+    environment:
+      <<: *web-env
+      DJANGO_DEBUG: "False"
+      DJANGO_DB_ENGINE: django.db.backends.postgresql
+      DJANGO_DB_NAME: spkb
+      DJANGO_DB_USER: spkb
+      DJANGO_DB_CONN_MAX_AGE: "600"
+      DJANGO_DB_SSLMODE: prefer
+      DJANGO_EMAIL_VERIFICATION_REQUIRED: "false"
+      DJANGO_CACHE_BACKEND: django.core.cache.backends.redis.RedisCache
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    networks:
+      - spkb-network
+    command: gunicorn --bind 0.0.0.0:8000 --workers 3 --access-logfile - --error-logfile - --worker-tmp-dir /dev/shm --forwarded-allow-ips='*' backend.wsgi:application
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
 
   nginx:
     networks:
@@ -89,6 +125,11 @@ services:
     depends_on:
       - web
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
 
 volumes:
   postgres-data:

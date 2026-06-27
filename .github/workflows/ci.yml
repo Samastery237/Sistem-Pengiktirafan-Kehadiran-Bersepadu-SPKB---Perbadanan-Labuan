@@ -12,7 +12,8 @@ concurrency:
 
 env:
   DJANGO_DEBUG: 'False'
-  DJANGO_ALLOWED_HOSTS: 'localhost,127.0.0.1,example.com'
+  DJANGO_ALLOWED_HOSTS: 'localhost,127.0.0.1'
+  DOCKER_IMAGE: ${{ secrets.DOCKER_USERNAME || 'spkb' }}/spkb
 
 jobs:
   lint:
@@ -24,7 +25,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v6
       with:
-        python-version: '3.12'
+        python-version: '3.14'
         cache: 'pip'
 
     - name: Install Python dependencies
@@ -35,23 +36,19 @@ jobs:
 
     - name: Lint with Ruff
       working-directory: ./backend
-      run: |
-        pip install ruff
-        ruff check .
+      run: pip install ruff && ruff check .
 
   backend-tests:
     name: Backend Tests
     runs-on: ubuntu-latest
     needs: lint
-    env:
-      DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY || 'ci-secret-key-for-github-actions-minimum-50-chars-long-ok' }}
     steps:
     - uses: actions/checkout@v7
 
     - name: Set up Python
       uses: actions/setup-python@v6
       with:
-        python-version: '3.12'
+        python-version: '3.14'
         cache: 'pip'
 
     - name: Install system dependencies for WeasyPrint
@@ -63,33 +60,23 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    - name: Run Django Migrations
-      working-directory: ./backend
-      env:
-        DJANGO_SUPERUSER_PASSWORD: ${{ secrets.DJANGO_SUPERUSER_PASSWORD || 'C1-Super-P@ssw0rd-2026!' }}
-      run: |
-        python manage.py makemigrations
-        python manage.py migrate
-        python manage.py createcachetable
-        python manage.py createsuperuser --noinput --username admin --email admin@example.com || true
-
     - name: Run Django Tests
       working-directory: ./backend
+      env:
+        DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
       run: python manage.py test --parallel
 
   e2e-tests:
     name: E2E Tests
     runs-on: ubuntu-latest
     needs: lint
-    env:
-      DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY || 'ci-secret-key-for-github-actions-minimum-50-chars-long-ok' }}
     steps:
     - uses: actions/checkout@v7
 
     - name: Set up Python
       uses: actions/setup-python@v6
       with:
-        python-version: '3.12'
+        python-version: '3.14'
         cache: 'pip'
 
     - name: Install system dependencies for WeasyPrint
@@ -123,16 +110,19 @@ jobs:
     - name: Run Django Migrations
       working-directory: ./backend
       env:
-        DJANGO_SUPERUSER_PASSWORD: ${{ secrets.DJANGO_SUPERUSER_PASSWORD || 'C1-Super-P@ssw0rd-2026!' }}
+        DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
       run: |
         python manage.py makemigrations
         python manage.py migrate
-        python manage.py createcachetable
-        python manage.py createsuperuser --noinput --username admin --email admin@example.com || true
+        python manage.py createcachetable || true
 
     - name: Set E2E test credentials
       working-directory: ./backend
-      run: python manage.py shell -c "from django.contrib.auth.models import User; u=User.objects.get(username='admin'); u.set_password('admin123'); u.save()"
+      env:
+        DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY }}
+      run: |
+        python manage.py createsuperuser --noinput --username admin --email admin@example.com --skip-checks || true
+        python manage.py shell -c "from django.contrib.auth.models import User; u=User.objects.get(username='admin'); u.set_password('admin123'); u.save()"
 
     - name: Run E2E Tests
       run: npx playwright test
@@ -144,3 +134,35 @@ jobs:
         name: playwright-report
         path: playwright-report/
         retention-days: 30
+
+  docker:
+    name: Docker Build & Push
+    runs-on: ubuntu-latest
+    needs: [backend-tests, e2e-tests]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+    - uses: actions/checkout@v7
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Login to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Build and push
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        push: true
+        tags: ${{ env.DOCKER_IMAGE }}:latest,${{ env.DOCKER_IMAGE }}:${{ github.sha }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Scan image for CVEs
+      uses: docker/scout-action@v1
+      with:
+        command: quickview,cves
+        image: ${{ env.DOCKER_IMAGE }}:latest
