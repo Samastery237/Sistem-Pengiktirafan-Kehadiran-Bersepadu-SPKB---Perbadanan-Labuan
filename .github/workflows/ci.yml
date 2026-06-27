@@ -84,6 +84,7 @@ jobs:
     - name: Run Django Tests
       working-directory: ./backend
       env:
+        DJANGO_DEBUG: 'True'
         DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY || 'ci-secret-key-for-github-actions-minimum-50-chars-long-ok' }}
       run: python manage.py test --parallel
 
@@ -141,6 +142,7 @@ jobs:
     - name: Run Django Migrations
       working-directory: ./backend
       env:
+        DJANGO_DEBUG: 'True'
         DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY || 'ci-secret-key-for-github-actions-minimum-50-chars-long-ok' }}
       run: |
         python manage.py makemigrations
@@ -150,6 +152,7 @@ jobs:
     - name: Set E2E test credentials
       working-directory: ./backend
       env:
+        DJANGO_DEBUG: 'True'
         DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY || 'ci-secret-key-for-github-actions-minimum-50-chars-long-ok' }}
       run: |
         python manage.py createsuperuser --noinput --username admin --email admin@example.com --skip-checks || true
