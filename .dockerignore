@@ -24,3 +24,5 @@ backend/security.json.log
 .vscode/
 README.md
 *.md
+*.sqlite3
+certs/

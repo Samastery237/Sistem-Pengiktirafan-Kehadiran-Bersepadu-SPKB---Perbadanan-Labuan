@@ -11,7 +11,7 @@ from datetime import timedelta
 from unittest.mock import patch
 
 from django.contrib.auth.models import User
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework import status
@@ -2198,3 +2198,449 @@ class TestStatsViewNoDetailOmitsFields(DisableThrottleMixin, TestCase):
         self.assertIn('total', data)
         self.assertIn('today', data)
         self.assertIn('certs', data)
+
+
+# ══════════════════════════════════════════════════════════════
+# Gap Tests: safe_csv, serve_frontend, UserDetailView.patch
+# ══════════════════════════════════════════════════════════════
+
+
+class TestSafeCSVFunction(DisableThrottleMixin, TestCase):
+    """TDD: safe_csv() should sanitize formula injection characters."""
+
+    def test_safe_csv_returns_empty_string_for_none(self):
+        """None input should return empty string."""
+        from attendance.views import safe_csv
+        self.assertEqual(safe_csv(None), '')
+
+    def test_safe_csv_returns_empty_string_for_empty(self):
+        """Empty string input should return empty string."""
+        from attendance.views import safe_csv
+        self.assertEqual(safe_csv(''), '')
+
+    def test_safe_csv_prefixes_equals_sign(self):
+        """Value starting with '=' should be prefixed with apostrophe."""
+        from attendance.views import safe_csv
+        self.assertEqual(safe_csv('=CMD|calc'), "'=CMD|calc")
+
+    def test_safe_csv_prefixes_plus_sign(self):
+        """Value starting with '+' should be prefixed with apostrophe."""
+        from attendance.views import safe_csv
+        self.assertEqual(safe_csv('+12345'), "'+12345")
+
+    def test_safe_csv_prefixes_minus_sign(self):
+        """Value starting with '-' should be prefixed with apostrophe."""
+        from attendance.views import safe_csv
+        self.assertEqual(safe_csv('-1+2'), "'-1+2")
+
+    def test_safe_csv_prefixes_at_sign(self):
+        """Value starting with '@' should be prefixed with apostrophe."""
+        from attendance.views import safe_csv
+        self.assertEqual(safe_csv('@SUM'), "'@SUM")
+
+    def test_safe_csv_prefixes_tab(self):
+        """Value starting with tab should be prefixed with apostrophe."""
+        from attendance.views import safe_csv
+        self.assertEqual(safe_csv('\t=CMD'), "'\t=CMD")
+
+    def test_safe_csv_prefixes_newline(self):
+        """Value starting with newline should be prefixed with apostrophe."""
+        from attendance.views import safe_csv
+        self.assertEqual(safe_csv('\n=CMD'), "'\n=CMD")
+
+    def test_safe_csv_does_not_prefix_normal_text(self):
+        """Normal text should pass through unchanged."""
+        from attendance.views import safe_csv
+        self.assertEqual(safe_csv('John Doe'), 'John Doe')
+
+    def test_safe_csv_does_not_prefix_numbers(self):
+        """Numeric strings should pass through unchanged."""
+        from attendance.views import safe_csv
+        self.assertEqual(safe_csv('123456'), '123456')
+
+    def test_safe_csv_does_not_prefix_midstring_special_chars(self):
+        """Special chars not at the start should pass through unchanged."""
+        from attendance.views import safe_csv
+        self.assertEqual(safe_csv('test@test.com'), 'test@test.com')
+
+
+class TestServeFrontendPathTraversal(TestCase):
+    """TDD: serve_frontend() must reject path traversal attempts."""
+
+    def test_normal_index_returns_200(self):
+        """A normal filename should serve the file."""
+        response = self.client.get('/')
+        self.assertEqual(response.status_code, 200)
+
+    def test_normal_form_html_returns_200(self):
+        """A known filename should serve the file."""
+        response = self.client.get('/form.html')
+        self.assertEqual(response.status_code, 200)
+
+    def test_double_dot_traversal_returns_404(self):
+        """Path with '..' should return 404."""
+        response = self.client.get('/../backend/.env')
+        self.assertEqual(response.status_code, 404)
+
+    def test_encoded_dot_dot_traversal_returns_404(self):
+        """URL-encoded path traversal should return 404."""
+        response = self.client.get('/%2e%2e/backend/.env')
+        self.assertEqual(response.status_code, 404)
+
+    def test_absolute_path_starting_with_slash_returns_404(self):
+        """Filename starting with '/' should be rejected."""
+        response = self.client.get('/etc/passwd')
+        self.assertEqual(response.status_code, 404)
+
+    def test_nested_double_dot_traversal_returns_404(self):
+        """Nested path with '../..' should return 404."""
+        response = self.client.get('/css/../../backend/.env')
+        self.assertEqual(response.status_code, 404)
+
+    def test_double_dot_in_middle_of_path_returns_404(self):
+        """Path with '..' in the middle should return 404."""
+        response = self.client.get('/js/../../../etc/passwd')
+        self.assertEqual(response.status_code, 404)
+
+    def test_backslash_start_returns_404(self):
+        """Filename starting with backslash should be rejected."""
+        response = self.client.get('/\\windows\\system32')
+        self.assertEqual(response.status_code, 404)
+
+    def test_nonexistent_file_returns_404(self):
+        """A nonexistent file should return 404."""
+        response = self.client.get('/nonexistent.html')
+        self.assertEqual(response.status_code, 404)
+
+
+class TestUserDetailViewPatch(DisableThrottleMixin, TestCase):
+    """TDD: UserDetailView PATCH edge cases."""
+
+    def setUp(self):
+        self.superuser = User.objects.create_superuser(
+            username='super', password='SuperPass1!', email='super@test.com'
+        )
+        self.superuser.save()
+        self.target_user = User.objects.create_user(
+            username='target', password='TargetPass1!', email='target@test.com'
+        )
+        self.client.login(username='super', password='SuperPass1!')
+
+    def test_patch_self_reset_allowed(self):
+        """A superuser should be able to reset their own password."""
+        response = self.client.patch(
+            reverse('users_detail', args=[self.superuser.id]),
+            data=json.dumps({'password': 'NewStrongPass123!'}),
+            content_type='application/json',
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.superuser.refresh_from_db()
+        self.assertTrue(self.superuser.check_password('NewStrongPass123!'))
+
+    def test_patch_other_user_resets_password(self):
+        """A superuser should be able to reset another user's password."""
+        response = self.client.patch(
+            reverse('users_detail', args=[self.target_user.id]),
+            data=json.dumps({'password': 'NewTargetPass123!'}),
+            content_type='application/json',
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.target_user.refresh_from_db()
+        self.assertTrue(self.target_user.check_password('NewTargetPass123!'))
+
+    def test_patch_rejects_weak_password(self):
+        """A purely numeric password should be rejected."""
+        response = self.client.patch(
+            reverse('users_detail', args=[self.target_user.id]),
+            data=json.dumps({'password': '12345678'}),
+            content_type='application/json',
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_patch_missing_password_field(self):
+        """Missing 'password' field should return 400."""
+        response = self.client.patch(
+            reverse('users_detail', args=[self.target_user.id]),
+            data=json.dumps({}),
+            content_type='application/json',
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_patch_nonexistent_user_returns_404(self):
+        """PATCH for a nonexistent user should return 404."""
+        response = self.client.patch(
+            reverse('users_detail', args=[99999]),
+            data=json.dumps({'password': 'NewStrongPass123!'}),
+            content_type='application/json',
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_patch_non_superuser_rejected(self):
+        """Non-superuser should get 403."""
+        self.client.logout()
+        normal_user = User.objects.create_user(username='normal', password='Pass1!')
+        self.client.login(username='normal', password='Pass1!')
+        response = self.client.patch(
+            reverse('users_detail', args=[self.target_user.id]),
+            data=json.dumps({'password': 'NewStrongPass123!'}),
+            content_type='application/json',
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+# ══════════════════════════════════════════════════════════════
+# Gap Tests: GetParticipantByICView
+# ══════════════════════════════════════════════════════════════
+
+
+@override_settings(EMAIL_VERIFICATION_REQUIRED=False)
+class TestGetParticipantByICView(DisableThrottleMixin, TestCase):
+    """Tests for GetParticipantByICView endpoint."""
+
+    def setUp(self):
+        self.dept = Department.objects.create(name='IT')
+        self.folder = Folder.objects.create(department=self.dept, name='General')
+        self.user = User.objects.create_user(username='admin', password='Pass1!', is_superuser=True)
+        AdminProfile.objects.create(user=self.user, department=self.dept, email_verified=True)
+        self.client.login(username='admin', password='Pass1!')
+        self.record = AttendanceRecord.objects.create(
+            fullname='Participant One', ic_number='900101-14-5555',
+            phone='0123456789', folder=self.folder,
+        )
+
+    def test_find_by_clean_ic_with_dashes(self):
+        url = reverse('get_participant', args=['900101-14-5555'])
+        response = self.client.get(url, HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.json()['data'][0]['fullname'], 'Participant One')
+
+    def test_find_by_clean_ic_without_dashes(self):
+        url = reverse('get_participant', args=['900101145555'])
+        response = self.client.get(url, HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_reject_short_ic(self):
+        url = reverse('get_participant', args=['12345'])
+        response = self.client.get(url, HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_reject_long_ic(self):
+        url = reverse('get_participant', args=['1' * 20])
+        response = self.client.get(url, HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_reject_non_numeric_ic(self):
+        url = reverse('get_participant', args=['abc'])
+        response = self.client.get(url, HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_not_found_returns_404(self):
+        url = reverse('get_participant', args=['999999999999'])
+        response = self.client.get(url, HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_unauthenticated_access_denied(self):
+        self.client.logout()
+        url = reverse('get_participant', args=['900101145555'])
+        response = self.client.get(url, HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_department_isolation(self):
+        other_dept = Department.objects.create(name='Finance')
+        other_user = User.objects.create_user(username='finance', password='Pass1!')
+        AdminProfile.objects.create(user=other_user, department=other_dept, email_verified=True)
+        self.client.logout()
+        self.client.login(username='finance', password='Pass1!')
+        url = reverse('get_participant', args=['900101145555'])
+        response = self.client.get(url, HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+
+# ══════════════════════════════════════════════════════════════
+# Gap Tests: HealthCheckView
+# ══════════════════════════════════════════════════════════════
+
+
+@override_settings(EMAIL_VERIFICATION_REQUIRED=False)
+class TestHealthCheckView(DisableThrottleMixin, TestCase):
+    """Tests for HealthCheckView including degraded states."""
+
+    def test_health_check_returns_ok(self):
+        response = self.client.get(reverse('health_check'), HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertEqual(data['status'], 'ok')
+        self.assertEqual(data['db'], 'connected')
+        self.assertEqual(data['cache'], 'connected')
+
+    def test_health_check_no_auth_required(self):
+        response = self.client.get(reverse('health_check'), HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+
+# ══════════════════════════════════════════════════════════════
+# Gap Tests: ImportCSVView duplicates
+# ══════════════════════════════════════════════════════════════
+
+
+@override_settings(EMAIL_VERIFICATION_REQUIRED=False)
+class TestImportCSVViewDuplicates(DisableThrottleMixin, TestCase):
+    """Tests for ImportCSVView duplicate handling."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='admin', password='Pass1!', is_superuser=True, is_staff=True)
+        self.client.login(username='admin', password='Pass1!')
+        AttendanceRecord.objects.create(
+            fullname='Existing User', ic_number='900101145555',
+            phone='0123456789', folder=None,
+        )
+
+    def _upload_csv(self, content):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        csv_file = SimpleUploadedFile('test.csv', content.encode('utf-8-sig'), content_type='text/csv')
+        return self.client.post(
+            reverse('import_csv'), data={'file': csv_file},
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+
+    def test_skip_duplicate_ic(self):
+        csv_content = 'fullname,ic_number,phone\nDuplicate,900101-14-5555,0123456789\n'
+        response = self._upload_csv(csv_content)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        data = response.json()
+        self.assertEqual(data['created'], 0)
+        self.assertEqual(data['skipped'], 1)
+
+    def test_import_new_and_duplicate(self):
+        csv_content = (
+            'fullname,ic_number,phone\n'
+            'Existing Dup,900101-14-5555,0123456789\n'
+            'New User,910101-14-6666,0123456790\n'
+        )
+        response = self._upload_csv(csv_content)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        data = response.json()
+        self.assertEqual(data['created'], 1)
+        self.assertEqual(data['skipped'], 1)
+
+    def test_skipped_field_in_partial_response(self):
+        csv_content = (
+            'fullname,ic_number,phone\n'
+            'Existing Dup,900101-14-5555,0123456789\n'
+            ',910101-14-6666,0123456790\n'
+        )
+        response = self._upload_csv(csv_content)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        data = response.json()
+        self.assertEqual(data['status'], 'partial')
+        self.assertEqual(data['skipped'], 1)
+
+
+# ══════════════════════════════════════════════════════════════
+# Gap Tests: AuditLogView
+# ══════════════════════════════════════════════════════════════
+
+
+@override_settings(EMAIL_VERIFICATION_REQUIRED=False)
+class TestAuditLogView(DisableThrottleMixin, TestCase):
+    """Tests for AuditLogView."""
+
+    def setUp(self):
+        self.superuser = User.objects.create_user(
+            username='super', password='Pass1!', is_superuser=True, is_staff=True,
+        )
+        self.normal_user = User.objects.create_user(username='normal', password='Pass1!')
+
+    def test_requires_superuser(self):
+        self.client.login(username='normal', password='Pass1!')
+        response = self.client.get(reverse('audit_log'), HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_superuser_allowed(self):
+        self.client.login(username='super', password='Pass1!')
+        response = self.client.get(reverse('audit_log'), HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_response_has_no_raw_field(self):
+        self.client.login(username='super', password='Pass1!')
+        response = self.client.get(reverse('audit_log'), HTTP_USER_AGENT=BROWSER_UA)
+        data = response.json()
+        if data.get('results'):
+            self.assertNotIn('raw', data['results'][0])
+
+    def test_response_structure(self):
+        self.client.login(username='super', password='Pass1!')
+        response = self.client.get(reverse('audit_log'), HTTP_USER_AGENT=BROWSER_UA)
+        data = response.json()
+        self.assertIn('results', data)
+        self.assertIn('count', data)
+        self.assertIn('next', data)
+        self.assertIn('previous', data)
+
+
+# ══════════════════════════════════════════════════════════════
+# Gap Tests: UserListView
+# ══════════════════════════════════════════════════════════════
+
+
+@override_settings(EMAIL_VERIFICATION_REQUIRED=False)
+class TestUserListViewDetail(DisableThrottleMixin, TestCase):
+    """Tests for UserListView and UserDetailView."""
+
+    def setUp(self):
+        self.superuser = User.objects.create_user(
+            username='super', password='Pass1!', is_superuser=True, is_staff=True,
+        )
+        self.dept = Department.objects.create(name='IT')
+        self.normal_user = User.objects.create_user(
+            username='staff', password='Pass1!', is_staff=True,
+        )
+        AdminProfile.objects.create(user=self.normal_user, department=self.dept, email_verified=True)
+
+    def test_user_list_requires_superuser(self):
+        self.client.login(username='staff', password='Pass1!')
+        response = self.client.get(reverse('users_list'), HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_user_list_returns_users(self):
+        self.client.login(username='super', password='Pass1!')
+        response = self.client.get(reverse('users_list'), HTTP_USER_AGENT=BROWSER_UA)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertIn('data', data)
+        usernames = [u['username'] for u in data['data']]
+        self.assertIn('super', usernames)
+        self.assertIn('staff', usernames)
+
+    def test_user_list_shows_department_info(self):
+        self.client.login(username='super', password='Pass1!')
+        response = self.client.get(reverse('users_list'), HTTP_USER_AGENT=BROWSER_UA)
+        data = response.json()
+        staff_user = next(u for u in data['data'] if u['username'] == 'staff')
+        self.assertEqual(staff_user['department_name'], 'IT')
+        self.assertEqual(staff_user['department_id'], self.dept.id)
+
+    def test_user_detail_delete_another_superuser_allowed(self):
+        victim = User.objects.create_user(
+            username='victim', password='Pass1!', is_superuser=True, is_staff=True,
+        )
+        self.client.login(username='super', password='Pass1!')
+        resp = self.client.delete(
+            reverse('users_detail', args=[victim.id]),
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        self.assertFalse(User.objects.filter(username='victim').exists())
+
+    def test_user_detail_delete_self_prevented(self):
+        self.client.login(username='super', password='Pass1!')
+        first = self.client.delete(
+            reverse('users_detail', args=[self.superuser.id]),
+            HTTP_USER_AGENT=BROWSER_UA,
+        )
+        self.assertEqual(first.status_code, status.HTTP_400_BAD_REQUEST)

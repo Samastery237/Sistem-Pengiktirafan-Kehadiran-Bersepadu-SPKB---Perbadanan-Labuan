@@ -170,19 +170,18 @@ def _serialize_record_public(record):
 def _render_to_pdf(template_src, context_dict=None):
     """Render an HTML template to PDF bytes. Returns None on failure."""
     try:
-        from xhtml2pdf import pisa
+        from weasyprint import HTML
     except ImportError:
         return None
 
-    template = get_template(template_src)
-    html = template.render(context_dict or {})
-    result = BytesIO()
-    pdf = pisa.pisaDocument(BytesIO(html.encode('UTF-8')), result)
-    if not pdf.err:
+    try:
+        template = get_template(template_src)
+        html = template.render(context_dict or {})
+        result = BytesIO()
+        HTML(string=html, base_url=None).write_pdf(target=result)
         return result.getvalue()
-
-    print("PDF Generation Error:", pdf.err)
-    return None
+    except Exception:
+        return None
 
 
 # ──────────────────────────────────────────────
@@ -733,7 +732,7 @@ class DownloadCertificateView(views.APIView):
             return response
 
         return Response(
-            {'status': 'error', 'message': 'PDF generation failed. Install xhtml2pdf: pip install xhtml2pdf'},
+            {'status': 'error', 'message': 'PDF generation failed. Install weasyprint: pip install weasyprint'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
@@ -745,19 +744,33 @@ class HealthCheckView(views.APIView):
     throttle_classes = [GlobalIPThrottle]
 
     def get(self, request):
+        from django.conf import settings
+
+        all_ok = True
+        checks = {}
+
+        # Database
         try:
             connection.ensure_connection()
-            db_status = 'connected'
-            http_status = status.HTTP_200_OK
-            resp_status = 'ok'
+            checks['db'] = 'connected'
         except Exception:
-            db_status = 'disconnected'
-            http_status = status.HTTP_503_SERVICE_UNAVAILABLE
-            resp_status = 'error'
+            checks['db'] = 'disconnected'
+            all_ok = False
 
+        # Cache (Redis or database-backed)
+        try:
+            from django.core.cache import cache
+            cache.set('health_check', 1, timeout=5)
+            val = cache.get('health_check')
+            checks['cache'] = 'connected' if val == 1 else 'unexpected'
+        except Exception:
+            checks['cache'] = 'disconnected'
+            all_ok = False
+
+        http_status = status.HTTP_200_OK if all_ok else status.HTTP_503_SERVICE_UNAVAILABLE
         return Response({
-            'status': resp_status,
-            'db': db_status,
+            'status': 'ok' if all_ok else 'error',
+            **checks,
             'timestamp': timezone.now().isoformat(),
         }, status=http_status)
 
@@ -822,6 +835,7 @@ class ImportCSVView(views.APIView):
             )
 
         created = 0
+        skipped = 0
         errors = []
         row_num = 0
 
@@ -844,6 +858,7 @@ class ImportCSVView(views.APIView):
 
             # Skip duplicates (by clean_ic_number)
             if clean_ic and AttendanceRecord.objects.filter(clean_ic_number=clean_ic).exists():
+                skipped += 1
                 continue
 
             AttendanceRecord.objects.create(
@@ -858,12 +873,12 @@ class ImportCSVView(views.APIView):
 
         if errors:
             return Response(
-                {'status': 'partial', 'created': created, 'errors': errors},
+                {'status': 'partial', 'created': created, 'skipped': skipped, 'errors': errors},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         return Response(
-            {'status': 'success', 'created': created},
+            {'status': 'success', 'created': created, 'skipped': skipped},
             status=status.HTTP_201_CREATED,
         )
 
@@ -871,6 +886,8 @@ class ImportCSVView(views.APIView):
 class AuditLogView(views.APIView):
     """GET: Return recent security log entries. Superuser only."""
     permission_classes = [IsAuthenticated]
+
+    _PII_PATTERNS = re.compile(r'\b\d{6}-?\d{2}-?\d{4}\b|\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b')
 
     def get(self, request):
         if not request.user.is_superuser:
@@ -891,6 +908,7 @@ class AuditLogView(views.APIView):
                 line = line.strip()
                 if not line:
                     continue
+                # Log format: LEVEL TIMESTAMP MESSAGE
                 parts = line.split(None, 2)
                 if len(parts) >= 3:
                     level = parts[0]
@@ -906,9 +924,8 @@ class AuditLogView(views.APIView):
                     continue
 
                 entries.append({
-                    'raw': line,
                     'level': level,
-                    'message': message,
+                    'message': self._PII_PATTERNS.sub('[REDACTED]', message),
                 })
 
         # Manual pagination

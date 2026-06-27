@@ -132,3 +132,4 @@ backend/test_certificate.pdf
 venv_win/
 .vscode/
 
+certs/

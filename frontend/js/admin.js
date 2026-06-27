@@ -1447,3 +1447,8 @@ async function submitAddUser() {
     showToast('<i class="fa-solid fa-xmark"></i> Ralat rangkaian.', 'error');
   }
 }
+
+// Exports for testability
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { getCookie, api, doLogin, startLoginCountdown, showToast, togglePasswordVisibility };
+}

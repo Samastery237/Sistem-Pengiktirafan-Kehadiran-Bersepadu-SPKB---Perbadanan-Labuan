@@ -1,10 +1,11 @@
-FROM python:3.12-alpine AS builder
+FROM python:3.14-alpine AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1
 
-RUN apk add --no-cache \
+RUN apk upgrade --no-cache && \
+    apk add --no-cache \
     build-base \
     pango-dev \
     cairo-dev \
@@ -13,7 +14,8 @@ RUN apk add --no-cache \
     zlib-dev \
     freetype-dev \
     harfbuzz-dev \
-    musl-dev
+    musl-dev \
+    postgresql-dev
 
 WORKDIR /app
 COPY backend/requirements.txt /app/
@@ -22,13 +24,14 @@ RUN python -m venv /venv && \
     /venv/bin/pip install -r requirements.txt && \
     rm -rf /root/.cache/pip
 
-FROM python:3.12-alpine
+FROM python:3.14-alpine
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PATH="/venv/bin:$PATH"
 
-RUN apk add --no-cache \
+RUN apk upgrade --no-cache && \
+    apk add --no-cache \
     pango \
     cairo \
     harfbuzz \
@@ -38,7 +41,7 @@ RUN apk add --no-cache \
     zlib
 
 COPY --from=builder /venv /venv
-RUN /usr/local/bin/pip install --upgrade pip==26.1.2 && rm -rf /root/.cache/pip
+RUN pip cache purge 2>/dev/null || true
 
 RUN addgroup --system --gid 1001 app && \
     adduser --system --uid 1001 --ingroup app --home /home/app app && \
@@ -55,5 +58,8 @@ RUN mkdir -p /app/backend/media /app/backend/staticfiles && \
 USER app
 
 EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/')" || exit 1
 
 CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "3", "--access-logfile", "-", "--error-logfile", "-", "backend.wsgi:application"]
