@@ -86,7 +86,7 @@ jobs:
       env:
         DJANGO_DEBUG: 'True'
         DJANGO_SECRET_KEY: ${{ secrets.DJANGO_SECRET_KEY || 'ci-secret-key-for-github-actions-minimum-50-chars-long-ok' }}
-      run: python manage.py test --verbosity 2
+      run: python manage.py test
 
   e2e-tests:
     name: E2E Tests
