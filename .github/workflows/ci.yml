@@ -32,16 +32,10 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y libcairo2-dev pkg-config meson python3-dev
-        python3 -c "
-import sysconfig, os, subprocess
-pc_dir = sysconfig.get_path('data') + '/lib/pkgconfig'
-src = '/usr/lib/x86_64-linux-gnu/pkgconfig/cairo.pc'
-if os.path.exists(src) and os.path.isdir(pc_dir):
-    subprocess.run(['ln', '-sf', src, pc_dir + '/cairo.pc'], check=True)
-    print('Linked cairo.pc into', pc_dir)
-else:
-    print('WARN: src exists:', os.path.exists(src), 'pc_dir exists:', os.path.isdir(pc_dir))
-"
+        PKG_DIR=$(python3 -c "import sysconfig; print(sysconfig.get_path('data') + '/lib/pkgconfig')")
+        if [ -f /usr/lib/x86_64-linux-gnu/pkgconfig/cairo.pc ] && [ -d "$PKG_DIR" ]; then
+            sudo ln -sf /usr/lib/x86_64-linux-gnu/pkgconfig/cairo.pc "$PKG_DIR/cairo.pc"
+        fi
 
     - name: Install Python dependencies
       working-directory: ./backend
@@ -74,16 +68,10 @@ else:
         sudo apt-get install -y libpango-1.0-0 libpangoft2-1.0-0 libcairo2 libcairo2-dev pkg-config meson python3-dev
         # pycairo's meson build overrides PKG_CONFIG_PATH with Python's own
         # pkgconfig dir, so we symlink cairo.pc into that directory
-        python3 -c "
-import sysconfig, os, subprocess
-pc_dir = sysconfig.get_path('data') + '/lib/pkgconfig'
-src = '/usr/lib/x86_64-linux-gnu/pkgconfig/cairo.pc'
-if os.path.exists(src) and os.path.isdir(pc_dir):
-    subprocess.run(['ln', '-sf', src, pc_dir + '/cairo.pc'], check=True)
-    print('Linked cairo.pc into', pc_dir)
-else:
-    print('WARN: src exists:', os.path.exists(src), 'pc_dir exists:', os.path.isdir(pc_dir))
-"
+        PKG_DIR=$(python3 -c "import sysconfig; print(sysconfig.get_path('data') + '/lib/pkgconfig')")
+        if [ -f /usr/lib/x86_64-linux-gnu/pkgconfig/cairo.pc ] && [ -d "$PKG_DIR" ]; then
+            sudo ln -sf /usr/lib/x86_64-linux-gnu/pkgconfig/cairo.pc "$PKG_DIR/cairo.pc"
+        fi
 
     - name: Install Python dependencies
       working-directory: ./backend
@@ -118,16 +106,10 @@ else:
         sudo apt-get install -y libpango-1.0-0 libpangoft2-1.0-0 libcairo2 libcairo2-dev pkg-config meson python3-dev
         # pycairo's meson build overrides PKG_CONFIG_PATH with Python's own
         # pkgconfig dir, so we symlink cairo.pc into that directory
-        python3 -c "
-import sysconfig, os, subprocess
-pc_dir = sysconfig.get_path('data') + '/lib/pkgconfig'
-src = '/usr/lib/x86_64-linux-gnu/pkgconfig/cairo.pc'
-if os.path.exists(src) and os.path.isdir(pc_dir):
-    subprocess.run(['ln', '-sf', src, pc_dir + '/cairo.pc'], check=True)
-    print('Linked cairo.pc into', pc_dir)
-else:
-    print('WARN: src exists:', os.path.exists(src), 'pc_dir exists:', os.path.isdir(pc_dir))
-"
+        PKG_DIR=$(python3 -c "import sysconfig; print(sysconfig.get_path('data') + '/lib/pkgconfig')")
+        if [ -f /usr/lib/x86_64-linux-gnu/pkgconfig/cairo.pc ] && [ -d "$PKG_DIR" ]; then
+            sudo ln -sf /usr/lib/x86_64-linux-gnu/pkgconfig/cairo.pc "$PKG_DIR/cairo.pc"
+        fi
 
     - name: Install Python dependencies
       working-directory: ./backend
