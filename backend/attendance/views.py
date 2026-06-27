@@ -744,8 +744,6 @@ class HealthCheckView(views.APIView):
     throttle_classes = [GlobalIPThrottle]
 
     def get(self, request):
-        from django.conf import settings
-
         all_ok = True
         checks = {}
 

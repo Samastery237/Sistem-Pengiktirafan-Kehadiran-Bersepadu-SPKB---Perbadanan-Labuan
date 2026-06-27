@@ -2383,7 +2383,7 @@ class TestUserDetailViewPatch(DisableThrottleMixin, TestCase):
     def test_patch_non_superuser_rejected(self):
         """Non-superuser should get 403."""
         self.client.logout()
-        normal_user = User.objects.create_user(username='normal', password='Pass1!')
+        User.objects.create_user(username='normal', password='Pass1!')
         self.client.login(username='normal', password='Pass1!')
         response = self.client.patch(
             reverse('users_detail', args=[self.target_user.id]),
@@ -2399,8 +2399,8 @@ class TestUserDetailViewPatch(DisableThrottleMixin, TestCase):
 
 
 @override_settings(EMAIL_VERIFICATION_REQUIRED=False)
-class TestGetParticipantByICView(DisableThrottleMixin, TestCase):
-    """Tests for GetParticipantByICView endpoint."""
+class TestGetParticipantByICViewAdvanced(DisableThrottleMixin, TestCase):
+    """Extended tests for GetParticipantByICView endpoint."""
 
     def setUp(self):
         self.dept = Department.objects.create(name='IT')
@@ -2467,7 +2467,7 @@ class TestGetParticipantByICView(DisableThrottleMixin, TestCase):
 
 
 @override_settings(EMAIL_VERIFICATION_REQUIRED=False)
-class TestHealthCheckView(DisableThrottleMixin, TestCase):
+class TestHealthCheckViewDegraded(DisableThrottleMixin, TestCase):
     """Tests for HealthCheckView including degraded states."""
 
     def test_health_check_returns_ok(self):
@@ -2547,8 +2547,8 @@ class TestImportCSVViewDuplicates(DisableThrottleMixin, TestCase):
 
 
 @override_settings(EMAIL_VERIFICATION_REQUIRED=False)
-class TestAuditLogView(DisableThrottleMixin, TestCase):
-    """Tests for AuditLogView."""
+class TestAuditLogViewPermissions(DisableThrottleMixin, TestCase):
+    """Tests for AuditLogView permissions."""
 
     def setUp(self):
         self.superuser = User.objects.create_user(
