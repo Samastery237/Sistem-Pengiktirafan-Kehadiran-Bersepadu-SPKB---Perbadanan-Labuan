@@ -116,6 +116,10 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
+# Playwright test artifacts
+playwright-report/
+test-results/
+
 # Dependency folders
 node_modules/
 backend/staticfiles/
