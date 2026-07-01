@@ -9,13 +9,6 @@ on:
 env:
   DJANGO_SECRET_KEY: ci-insecure-key-for-testing-only
   DJANGO_DEBUG: "False"
-  DJANGO_DB_ENGINE: django.db.backends.postgresql
-  DJANGO_DB_NAME: spkb
-  DJANGO_DB_USER: spkb
-  DJANGO_DB_PASSWORD: ci_test_password
-  DJANGO_DB_HOST: localhost
-  DJANGO_DB_PORT: 5432
-  DJANGO_DB_SSLMODE: prefer
   DJANGO_CACHE_BACKEND: django.core.cache.backends.locmem.LocMemCache
   DJANGO_CACHE_LOCATION: unique
   DJANGO_EMAIL_VERIFICATION_REQUIRED: "false"
@@ -32,7 +25,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.14'
+          python-version: '3.13'
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -42,29 +35,15 @@ jobs:
 
   test-backend:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_DB: spkb
-          POSTGRES_USER: spkb
-          POSTGRES_PASSWORD: ci_test_password
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready -U spkb
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 5
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.14'
+          python-version: '3.13'
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libcairo2 libcairo2-dev pango1.0-tools
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -75,32 +54,18 @@ jobs:
 
   test-e2e:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_DB: spkb
-          POSTGRES_USER: spkb
-          POSTGRES_PASSWORD: ci_test_password
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready -U spkb
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 5
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.14'
+          python-version: '3.13'
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libcairo2 libcairo2-dev pango1.0-tools
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
