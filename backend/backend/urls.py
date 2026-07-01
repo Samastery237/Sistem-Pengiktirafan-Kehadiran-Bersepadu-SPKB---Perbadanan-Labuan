@@ -33,8 +33,10 @@ def serve_frontend(request, filename='index.html'):
         raise Http404
     if os.path.isfile(filepath):
         content_type = 'text/html'
-        if filename.endswith('.css'): content_type = 'text/css'
-        elif filename.endswith('.js'): content_type = 'application/javascript'
+        if filename.endswith('.css'):
+            content_type = 'text/css'
+        elif filename.endswith('.js'):
+            content_type = 'application/javascript'
         return FileResponse(open(filepath, 'rb'), content_type=content_type)
     raise Http404
 

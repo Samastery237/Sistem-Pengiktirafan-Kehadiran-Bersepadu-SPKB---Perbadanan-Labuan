@@ -22,7 +22,7 @@ BROWSER_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
 
 
 class TestGlobalIPThrottle(TestCase):
-    """Test the global IP-level rate limiter (100 req/min)."""
+    """Test the global IP-level rate limiter (200 req/min)."""
 
     def setUp(self):
         cache.clear()
@@ -42,15 +42,15 @@ class TestGlobalIPThrottle(TestCase):
             self.assertEqual(response.status_code, 200)
 
     def test_global_ip_throttle_blocks_excessive_requests(self):
-        """After 100 requests from the same IP, the 101st should be 429."""
-        for i in range(100):
+        """After 200 requests from the same IP, the 201st should be 429."""
+        for i in range(200):
             response = self.client.get(
                 '/api/attendance/health/',
                 HTTP_USER_AGENT=BROWSER_UA,
             )
             self.assertEqual(response.status_code, 200, f"Request {i+1} failed unexpectedly")
 
-        # 101st request should be blocked (either by middleware IP throttle or DRF view throttle)
+        # 201st request should be blocked (either by middleware IP throttle or DRF view throttle)
         response = self.client.get(
             '/api/attendance/health/',
             HTTP_USER_AGENT=BROWSER_UA,
@@ -60,7 +60,7 @@ class TestGlobalIPThrottle(TestCase):
     def test_block_expires_after_duration(self):
         """After the block window passes, requests should succeed again."""
         # Exhaust the limit
-        for i in range(101):
+        for i in range(201):
             self.client.get(
                 '/api/attendance/health/',
                 HTTP_USER_AGENT=BROWSER_UA,
@@ -86,7 +86,7 @@ class TestGlobalIPThrottle(TestCase):
     def test_different_ips_not_affected(self):
         """Blocking one IP should not block requests from a different IP."""
         # Exhaust limit from IP 1.2.3.4
-        for i in range(101):
+        for i in range(201):
             self.client.get(
                 '/api/attendance/health/',
                 HTTP_X_FORWARDED_FOR='1.2.3.4',

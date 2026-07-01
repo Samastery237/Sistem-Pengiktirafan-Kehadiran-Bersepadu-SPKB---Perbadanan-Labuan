@@ -56,6 +56,9 @@ class AttendanceRecordSerializer(serializers.ModelSerializer):
     department_name = serializers.CharField(write_only=True, allow_blank=True)
     folder_name = serializers.CharField(write_only=True, allow_blank=True)
 
+    fullname = serializers.CharField(max_length=255)
+    organization = serializers.CharField(allow_blank=True, required=False, max_length=255)
+    phone = serializers.CharField(allow_blank=True, allow_null=True, required=False, max_length=20)
     ic_number = serializers.CharField(allow_blank=True, required=False)
 
     class Meta:
@@ -90,8 +93,10 @@ class AttendanceRecordSerializer(serializers.ModelSerializer):
         department_name = validated_data.pop('department_name', 'General Department')
         folder_name = validated_data.pop('folder_name', 'General Folder')
         
-        if not department_name: department_name = 'General Department'
-        if not folder_name: folder_name = 'General Folder'
+        if not department_name:
+            department_name = 'General Department'
+        if not folder_name:
+            folder_name = 'General Folder'
 
         department, _ = Department.objects.get_or_create(name=department_name)
         folder, _ = Folder.objects.get_or_create(department=department, name=folder_name)

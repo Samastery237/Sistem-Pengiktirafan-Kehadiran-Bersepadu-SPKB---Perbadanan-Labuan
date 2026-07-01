@@ -261,15 +261,18 @@ class FullBackendSuite(DisableThrottleMixin, TestCase):
         self.assertEqual(response.status_code, 403)
 
     def test_ic_lookup_idor_and_pii(self):
-        """Verify IC lookup requires authentication and restricts by department for admins."""
+        """Verify IC lookup is public (returns no PII for unauthenticated) and restricts by department for admins."""
         other_dept = Department.objects.create(name="HR")
         other_folder = Folder.objects.create(department=other_dept, name="Onboarding")
         AttendanceRecord.objects.create(fullname="My Record", ic_number="888888888888", phone="111", folder=self.folder)
         AttendanceRecord.objects.create(fullname="Other Record", ic_number="888888888888", phone="222", folder=other_folder)
 
-        # 1. Unauthenticated request -> should be denied (403 Forbidden)
+        # 1. Unauthenticated request -> returns public data (no PII)
         response = self.client.get('/api/attendance/participant/888888888888/')
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 200)
+        data = response.json()['data']
+        self.assertNotIn('phone', data[0])
+        self.assertNotIn('email', data[0])
 
         # 2. Authenticated non-super admin request -> should return ONLY their department's record (FULL PII)
         from attendance.models import AdminProfile
@@ -405,7 +408,7 @@ class FullBackendSuite(DisableThrottleMixin, TestCase):
     def test_download_certificate_view(self):
         record = AttendanceRecord.objects.create(fullname="Cert User", ic_number="123456789012", phone="123", folder=self.folder)
         # Certificate download now requires IC verification (?ic=last 4 digits)
-        response = self.client.get(reverse('download_certificate', args=[record.id]) + '?ic=9012')
+        response = self.client.get(reverse('download_certificate', args=[record.id]) + '?ic=789012')
         self.assertIn(response.status_code, [200, 500])
 
     def test_download_certificate_requires_ic(self):
@@ -417,7 +420,7 @@ class FullBackendSuite(DisableThrottleMixin, TestCase):
     def test_download_certificate_wrong_ic(self):
         """Certificate download with wrong IC should return 403."""
         record = AttendanceRecord.objects.create(fullname="Cert User", ic_number="123456789012", phone="123", folder=self.folder)
-        response = self.client.get(reverse('download_certificate', args=[record.id]) + '?ic=0000')
+        response = self.client.get(reverse('download_certificate', args=[record.id]) + '?ic=000000')
         self.assertEqual(response.status_code, 403)
 
     # ──────────────────────────────────────────────
@@ -591,11 +594,11 @@ class FullBackendSuite(DisableThrottleMixin, TestCase):
         self.assertEqual(response.status_code, 200)
 
     def test_views_get_participant_invalid_ic(self):
-        # Unauthenticated request to authenticated endpoint should return 403
+        # Invalid IC returns 400 regardless of auth status
         response = self.client.get('/api/attendance/participant/abcd/')
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 400)
 
-        # Authenticated request with invalid IC should return 400
+        # Authenticated request with invalid IC should also return 400
         self.client.login(username='admin', password='password123')
         response = self.client.get('/api/attendance/participant/abcd/')
         self.assertEqual(response.status_code, 400)
@@ -675,7 +678,7 @@ class FullBackendSuite(DisableThrottleMixin, TestCase):
         my_record = AttendanceRecord.objects.create(fullname="My", ic_number="111111111111", folder=self.folder)
         
         with patch('attendance.views._render_to_pdf', return_value=None):
-            response = self.client.get(reverse('download_certificate', args=[my_record.id]) + '?ic=1111')
+            response = self.client.get(reverse('download_certificate', args=[my_record.id]) + '?ic=111111')
             self.assertEqual(response.status_code, 500)
             
         with patch.dict('sys.modules', {'weasyprint': None}):
@@ -1083,6 +1086,7 @@ class TestCSRFRotation(DisableThrottleMixin, TestCase):
             self.assertNotEqual(old_csrftoken, new_csrftoken)
 
 
+@override_settings(EMAIL_VERIFICATION_REQUIRED=True)
 class TestEmailVerification(DisableThrottleMixin, TestCase):
     """TDD: Email verification flow for new accounts."""
 
@@ -1710,7 +1714,7 @@ class TestCertificateAccessControl(DisableThrottleMixin, TestCase):
             phone="0123456789", folder=self.folder
         )
         with patch('attendance.views._render_to_pdf', return_value=b'fake-pdf'):
-            resp = self.client.get(reverse('download_certificate', args=[record.id]) + '?ic=9012')
+            resp = self.client.get(reverse('download_certificate', args=[record.id]) + '?ic=789012')
         self.assertEqual(resp.status_code, 200)
 
     def test_certificate_download_sets_generated_flag(self):
@@ -1720,7 +1724,7 @@ class TestCertificateAccessControl(DisableThrottleMixin, TestCase):
             phone="0987654321", folder=self.folder
         )
         with patch('attendance.views._render_to_pdf', return_value=b'fake-pdf'):
-            self.client.get(reverse('download_certificate', args=[record.id]) + '?ic=1098')
+            self.client.get(reverse('download_certificate', args=[record.id]) + '?ic=321098')
         record.refresh_from_db()
         self.assertTrue(record.certificate_generated)
 
@@ -2290,6 +2294,7 @@ class TestUserCreationEdgeCases(DisableThrottleMixin, TestCase):
         profile = AdminProfile.objects.get(user=new_user)
         self.assertIsNone(profile.department)
 
+    @override_settings(EMAIL_VERIFICATION_REQUIRED=True)
     def test_inactive_user_without_email_no_crash(self):
         """Creating a user with verification required but no email should not crash."""
         resp = self.client.post(reverse('users_list'), data=json.dumps({

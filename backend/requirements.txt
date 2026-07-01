@@ -38,5 +38,5 @@ watchdog==6.0.0
 weasyprint==69.0
 sentry-sdk==2.8.0
 gunicorn==26.0.0
-psycopg2-binary==2.9.10
+psycopg==3.2.13
 whitenoise==6.8.0

@@ -403,14 +403,14 @@ class TestCertificateDownloadFlow(DisableThrottleMixin, TestCase):
         """Download certificate with correct last-4 IC returns 200 + PDF."""
         from unittest.mock import patch
         with patch('attendance.views._render_to_pdf', return_value=b'fake-pdf-bytes'):
-            url = reverse('download_certificate', args=[self.record.id]) + '?ic=9012'
+            url = reverse('download_certificate', args=[self.record.id]) + '?ic=789012'
             response = self.client.get(url, HTTP_USER_AGENT=BROWSER_UA)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response['Content-Type'], 'application/pdf')
 
     def test_certificate_download_wrong_last4(self):
         """Download certificate with wrong last-4 IC returns 403."""
-        url = reverse('download_certificate', args=[self.record.id]) + '?ic=0000'
+        url = reverse('download_certificate', args=[self.record.id]) + '?ic=000000'
         response = self.client.get(url, HTTP_USER_AGENT=BROWSER_UA)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 

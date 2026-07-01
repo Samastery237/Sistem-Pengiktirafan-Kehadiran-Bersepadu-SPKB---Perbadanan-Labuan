@@ -10,7 +10,12 @@ from django.contrib.auth.models import User
 class Department(models.Model):
     name = models.CharField(max_length=255, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    
+
+    def save(self, *args, **kwargs):
+        if self.name and len(self.name) > 255:
+            self.name = self.name[:255]
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return self.name
 
@@ -66,7 +71,7 @@ class AttendanceRecord(models.Model):
 
 class AdminProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='admin_profile')
-    department = models.ForeignKey(Department, on_delete=models.SET_NULL, null=True, blank=True)
+    department = models.ForeignKey(Department, on_delete=models.PROTECT, null=True, blank=True)
     email_verified = models.BooleanField(default=False)
     verified_at = models.DateTimeField(null=True, blank=True)
 

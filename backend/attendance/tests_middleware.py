@@ -766,7 +766,7 @@ class TestFullIntegrationFlow(DisableThrottleMixin, TestCase):
 
         # Step 4: Superuser downloads certificate
         cert_response = self.client.get(
-            reverse('download_certificate', args=[record_id]) + '?ic=5555',
+            reverse('download_certificate', args=[record_id]) + '?ic=145555',
             HTTP_USER_AGENT=BROWSER_UA,
         )
         self.assertIn(cert_response.status_code, [200, 500])

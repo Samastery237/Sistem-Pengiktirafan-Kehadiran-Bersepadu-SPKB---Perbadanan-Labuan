@@ -7,6 +7,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
+from django.db import transaction
 from django.db.models import F
 from django.middleware.csrf import get_token, rotate_token
 from django.utils import timezone
@@ -16,8 +17,10 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 
 import logging
+from django.core.cache import cache
+
 from .abuse import GlobalIPThrottle
-from .middleware import get_client_ip
+from .middleware import get_client_ip, ABUSE_CACHE_PREFIX
 from .models import AdminProfile, Department, EmailVerificationToken, FailedLoginAttempt, UserAccountLock
 
 logger = logging.getLogger('security')
@@ -33,6 +36,8 @@ class LoginThrottle(AnonRateThrottle):
     def allow_request(self, request, view):
         from django.conf import settings
         if settings.DEBUG:
+            return True
+        if request.method == 'GET':
             return True
         return super().allow_request(request, view)
 
@@ -85,23 +90,40 @@ def _record_failed_attempt(username, ip):
     try:
         user = User.objects.get(username=username)
     except User.DoesNotExist:
-        return  # Don't create lock records for non-existent users
-
-    lock, _ = UserAccountLock.objects.get_or_create(user=user)
+        user = None
 
     window_start = timezone.now() - timedelta(minutes=ATTEMPT_WINDOW_MINUTES)
+
+    if user:
+        with transaction.atomic():
+            lock = UserAccountLock.objects.select_for_update().get_or_create(user=user)[0]
+            recent_attempts = FailedLoginAttempt.objects.filter(
+                username=username,
+                attempted_at__gte=window_start
+            ).count()
+            lock.failure_count = F('failure_count') + 1
+            lock.last_failure_at = timezone.now()
+            if recent_attempts >= MAX_FAILED_ATTEMPTS:
+                lock.locked_until = timezone.now() + timedelta(minutes=LOCKOUT_DURATION_MINUTES)
+            else:
+                lock.locked_until = None
+            lock.save()
+            lock.refresh_from_db()
+    else:
+        ip_recent = FailedLoginAttempt.objects.filter(
+            ip_address=ip,
+            attempted_at__gte=window_start
+        ).count()
+        if ip_recent >= MAX_FAILED_ATTEMPTS:
+            logger.warning(
+                f"IP LOCKED: IP={ip}, Username={username}, "
+                f"RecentAttempts={ip_recent}"
+            )
+
     recent_attempts = FailedLoginAttempt.objects.filter(
         username=username,
         attempted_at__gte=window_start
     ).count()
-
-    UserAccountLock.objects.filter(user=user).update(
-        failure_count=F('failure_count') + 1,
-        last_failure_at=timezone.now(),
-        locked_until=timezone.now() + timedelta(minutes=LOCKOUT_DURATION_MINUTES)
-        if recent_attempts >= MAX_FAILED_ATTEMPTS
-        else None,
-    )
 
     if recent_attempts >= MAX_FAILED_ATTEMPTS:
         logger.warning(
@@ -721,13 +743,57 @@ class PasswordResetConfirmView(views.APIView):
         user.save()
 
         from django.contrib.sessions.models import Session
-        Session.objects.filter(
-            expire_date__gte=timezone.now(),
-            session_data__contains=str(user.pk)
-        ).delete()
+        from django.contrib.sessions.backends.db import SessionStore
+        active_sessions = Session.objects.filter(
+            expire_date__gte=timezone.now()
+        )
+        for session in active_sessions:
+            try:
+                data = session.get_decoded()
+                if data.get('_auth_user_id') == str(user.pk):
+                    session.delete()
+            except Exception:
+                pass
 
         logger.info(f"PASSWORD RESET COMPLETED: User={user.username}")
         return Response({
             'status': 'success',
             'message': 'Kata laluan berjaya ditetapkan semula. Sila log masuk dengan kata laluan baru.'
+        })
+
+
+class UnlockAccountView(views.APIView):
+    """GET: Unlock an account. Requires authentication (superuser only)."""
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [GlobalIPThrottle]
+
+    def get(self, request):
+        if not request.user.is_superuser:
+            return Response(
+                {'status': 'error', 'message': 'Forbidden'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        username = request.GET.get('username', 'admin')
+        unlocked = []
+        from attendance.models import UserAccountLock, FailedLoginAttempt
+        locks = UserAccountLock.objects.filter(user__username=username)
+        for lock in locks:
+            lock.locked_until = None
+            lock.failure_count = 0
+            lock.save(update_fields=['locked_until', 'failure_count'])
+            unlocked.append(username)
+        FailedLoginAttempt.objects.filter(username=username).delete()
+
+        ip = get_client_ip(request)
+
+        abuse_key = f"{ABUSE_CACHE_PREFIX}{ip}"
+        cache.delete(abuse_key)
+
+        for scope in ('global_ip', 'login', 'anon', 'user', 'aggressive_ip', 'bot_detection'):
+            cache.delete(f'throttle_{scope}_{ip}')
+
+        return Response({
+            'status': 'success',
+            'message': f"Unlocked {len(unlocked)} account(s).",
+            'unlocked': unlocked
         })

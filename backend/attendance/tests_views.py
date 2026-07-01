@@ -521,13 +521,23 @@ class TestGetParticipantByICView(DisableThrottleMixin, TestCase):
         data = response.json()['data']
         self.assertEqual(len(data), 2)
 
-    def test_unauthenticated_returns_403(self):
-        """Unauthenticated request should return 403."""
+    def test_unauthenticated_returns_public_data(self):
+        """Unauthenticated request should return public certificate-rendering data."""
         response = self.client.get(
             reverse('get_participant', args=['123456789012']),
             HTTP_USER_AGENT=BROWSER_UA,
         )
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()['data']
+        self.assertEqual(len(data), 2)
+        # Public data excludes PII but includes cert-rendering fields
+        for item in data:
+            self.assertNotIn('fullname', item)
+            self.assertNotIn('ic_number', item)
+            self.assertNotIn('phone', item)
+            self.assertNotIn('email', item)
+            self.assertNotIn('organization', item)
+            self.assertIn('cert_template', item)
 
 
 # ══════════════════════════════════════════════════════════════
@@ -1151,7 +1161,7 @@ class TestDownloadCertificateView(DisableThrottleMixin, TestCase):
         """With valid IC suffix should return PDF."""
         with patch('attendance.views._render_to_pdf', return_value=b'fake-pdf-bytes'):
             response = self.client.get(
-                reverse('download_certificate', args=[self.record.id]) + '?ic=9012',
+                reverse('download_certificate', args=[self.record.id]) + '?ic=789012',
                 HTTP_USER_AGENT=BROWSER_UA,
             )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -1168,7 +1178,7 @@ class TestDownloadCertificateView(DisableThrottleMixin, TestCase):
     def test_wrong_ic_returns_403(self):
         """With wrong IC suffix should return 403."""
         response = self.client.get(
-            reverse('download_certificate', args=[self.record.id]) + '?ic=0000',
+            reverse('download_certificate', args=[self.record.id]) + '?ic=000000',
             HTTP_USER_AGENT=BROWSER_UA,
         )
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
@@ -1177,7 +1187,7 @@ class TestDownloadCertificateView(DisableThrottleMixin, TestCase):
         """Non-existent record should return 404."""
         fake_id = uuid.uuid4()
         response = self.client.get(
-            reverse('download_certificate', args=[fake_id]) + '?ic=9012',
+            reverse('download_certificate', args=[fake_id]) + '?ic=789012',
             HTTP_USER_AGENT=BROWSER_UA,
         )
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
@@ -1187,7 +1197,7 @@ class TestDownloadCertificateView(DisableThrottleMixin, TestCase):
         self.assertFalse(self.record.certificate_generated)
         with patch('attendance.views._render_to_pdf', return_value=b'fake-pdf-bytes'):
             self.client.get(
-                reverse('download_certificate', args=[self.record.id]) + '?ic=9012',
+                reverse('download_certificate', args=[self.record.id]) + '?ic=789012',
                 HTTP_USER_AGENT=BROWSER_UA,
             )
         self.record.refresh_from_db()
@@ -1197,7 +1207,7 @@ class TestDownloadCertificateView(DisableThrottleMixin, TestCase):
         """If PDF generation fails, should return 500."""
         with patch('attendance.views._render_to_pdf', return_value=None):
             response = self.client.get(
-                reverse('download_certificate', args=[self.record.id]) + '?ic=9012',
+                reverse('download_certificate', args=[self.record.id]) + '?ic=789012',
                 HTTP_USER_AGENT=BROWSER_UA,
             )
         self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -1206,7 +1216,7 @@ class TestDownloadCertificateView(DisableThrottleMixin, TestCase):
         """Certificate download should be accessible without authentication."""
         with patch('attendance.views._render_to_pdf', return_value=b'fake-pdf-bytes'):
             response = self.client.get(
-                reverse('download_certificate', args=[self.record.id]) + '?ic=9012',
+                reverse('download_certificate', args=[self.record.id]) + '?ic=789012',
                 HTTP_USER_AGENT=BROWSER_UA,
             )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -2444,11 +2454,22 @@ class TestGetParticipantByICViewAdvanced(DisableThrottleMixin, TestCase):
         response = self.client.get(url, HTTP_USER_AGENT=BROWSER_UA)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
-    def test_unauthenticated_access_denied(self):
+    def test_unauthenticated_returns_public_data(self):
         self.client.logout()
         url = reverse('get_participant', args=['900101145555'])
         response = self.client.get(url, HTTP_USER_AGENT=BROWSER_UA)
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()['data']
+        self.assertEqual(len(data), 1)
+        # Public data includes cert-rendering fields but not PII (fullname, ic_number, phone, email, organization)
+        self.assertNotIn('fullname', data[0])
+        self.assertNotIn('ic_number', data[0])
+        self.assertNotIn('phone', data[0])
+        self.assertNotIn('email', data[0])
+        self.assertNotIn('organization', data[0])
+        # Public data should include non-PII cert-rendering fields
+        self.assertIn('folder_id', data[0])
+        self.assertIn('cert_template', data[0])
 
     def test_department_isolation(self):
         other_dept = Department.objects.create(name='Finance')

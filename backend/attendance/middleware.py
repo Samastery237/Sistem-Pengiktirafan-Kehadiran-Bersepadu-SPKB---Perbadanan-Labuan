@@ -6,7 +6,7 @@ logger = logging.getLogger('security')
 
 # Abuse protection configuration
 ABUSE_WINDOW_SECONDS = 60          # 1-minute sliding window
-ABUSE_MAX_REQUESTS = 100           # max requests per IP per window
+ABUSE_MAX_REQUESTS = 500           # max requests per IP per window
 ABUSE_BLOCK_DURATION = 300         # 5-minute block when exceeded
 ABUSE_CACHE_PREFIX = 'abuse:ip:'
 
@@ -162,7 +162,8 @@ class AbuseProtectionMiddleware:
         from django.conf import settings
 
         # Only protect API paths (not admin, static, etc.)
-        # AND explicitly bypass the health check endpoint (so monitoring tools/Playwright don't get blocked)
+        # AND explicitly bypass the health check endpoint
+        # (so monitoring tools/Playwright don't get blocked)
         if not request.path.startswith('/api/') or request.path == '/api/attendance/health/':
             return self.get_response(request)
 

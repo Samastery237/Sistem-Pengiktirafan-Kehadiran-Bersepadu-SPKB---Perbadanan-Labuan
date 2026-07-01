@@ -17,6 +17,7 @@ from .views import (
     HealthCheckView,
     ImportCSVView,
     AuditLogView,
+    MarkCertificateGeneratedView,
 )
 
 urlpatterns = [
@@ -34,6 +35,7 @@ urlpatterns = [
     path('auth/reset-password/confirm/', auth_views.PasswordResetConfirmView.as_view(), name='auth_reset_password_confirm'),
     path('users/', auth_views.UserListView.as_view(), name='users_list'),
     path('users/<int:user_id>/', auth_views.UserDetailView.as_view(), name='users_detail'),
+    path('auth/unlock/', auth_views.UnlockAccountView.as_view(), name='auth_unlock'),
 
     # Attendance
     path('submit/', SubmitAttendanceView.as_view(), name='submit_attendance'),
@@ -54,6 +56,7 @@ urlpatterns = [
 
     # Certificate
     path('download-certificate/<uuid:record_id>/', DownloadCertificateView.as_view(), name='download_certificate'),
+    path('mark-cert-generated/<uuid:record_id>/', MarkCertificateGeneratedView.as_view(), name='mark_cert_generated'),
 
     # Audit log (superuser only)
     path('audit/', AuditLogView.as_view(), name='audit_log'),

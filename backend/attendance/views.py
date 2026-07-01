@@ -80,22 +80,32 @@ class GenerateThrottle(AnonRateThrottle):
 
 
 def _user_department(request):
-    """Return the department for an authenticated non-superuser, or None."""
+    """Return the department for an authenticated non-superuser, or None for superusers.
+    Returns a special DENIED sentinel for non-superusers with no department."""
     user = getattr(request, 'user', None)
     if (
         user
         and user.is_authenticated
         and not user.is_superuser
         and hasattr(user, 'admin_profile')
-        and user.admin_profile.department
     ):
-        return user.admin_profile.department
+        if user.admin_profile.department:
+            return user.admin_profile.department
+        return _DENIED  # non-superuser with no department — deny all access
     return None
+
+class _DeniedType:
+    """Sentinel for denied access."""
+    def __bool__(self):
+        return False
+_DENIED = _DeniedType()
 
 
 def _enforce_department_filter(qs, request):
     """Filter a queryset to the requesting user's department (non-superuser only)."""
     dept = _user_department(request)
+    if dept is _DENIED:
+        return qs.none()
     if dept is not None:
         return qs.filter(folder__department=dept)
     return qs
@@ -107,6 +117,8 @@ def _enforce_record_ownership(record, request):
     Returns None if allowed, or a Response(403) if denied.
     """
     dept = _user_department(request)
+    if dept is _DENIED:
+        return Response({'status': 'error', 'message': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
     if dept is not None:
         record_dept = record.folder.department if record.folder else None
         if record_dept and record_dept != dept:
@@ -120,6 +132,8 @@ def _enforce_folder_ownership(folder, request):
     Returns None if allowed, or a Response(403) if denied.
     """
     dept = _user_department(request)
+    if dept is _DENIED:
+        return Response({'status': 'error', 'message': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
     if dept is not None and folder.department != dept:
         return Response({'status': 'error', 'message': 'Forbidden'}, status=status.HTTP_403_FORBIDDEN)
     return None
@@ -313,9 +327,11 @@ class RecordDetailView(views.APIView):
 class GetParticipantByICView(views.APIView):
     """
     GET: Find all records for a given IC number.
-    Authenticated only — scoped to user's department for non-superusers.
+    Public endpoint — no authentication required.
+    Unauthenticated requests return certificate-rendering data (no phone/email/organization).
+    Authenticated requests get full record data scoped to their department.
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
 
     def get(self, request, ic_number):
         clean_ic = re.sub(r'\D', '', ic_number)
@@ -328,16 +344,50 @@ class GetParticipantByICView(views.APIView):
         records = AttendanceRecord.objects.filter(
             clean_ic_number=clean_ic
         ).select_related('folder__department').order_by('-timestamp')
-        records = _enforce_department_filter(records, request)
 
-        if records.exists():
-            data = [_serialize_record(r) for r in records]
-            return Response({'status': 'success', 'data': data})
+        if not records.exists():
+            return Response(
+                {'status': 'error', 'message': 'Not found'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
-        return Response(
-            {'status': 'error', 'message': 'Not found'},
-            status=status.HTTP_404_NOT_FOUND,
-        )
+        # Authenticated admin users get full record data (scoped to their department)
+        if request.user and request.user.is_authenticated:
+            records = _enforce_department_filter(records, request)
+            if records.exists():
+                data = [_serialize_record(r) for r in records]
+                return Response({'status': 'success', 'data': data})
+            return Response(
+                {'status': 'error', 'message': 'Not found'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        # Public (unauthenticated) — return only non-PII data needed for certificate rendering
+        data = []
+        for r in records:
+            data.append({
+                'id': str(r.id),
+                'ref': r.ref,
+                'folder_id': r.folder_id,
+                'department_name': r.folder.department.name if r.folder and r.folder.department else '—',
+                'folder_name': r.folder.name if r.folder else '—',
+                'cert_delay': r.folder.cert_delay if r.folder else 120000,
+                'cert_template': r.folder.cert_template if r.folder else None,
+                'name_x': r.folder.name_x if r.folder else 500,
+                'name_y': r.folder.name_y if r.folder else 360,
+                'name_size': r.folder.name_size if r.folder else 42,
+                'show_ic': r.folder.show_ic if r.folder else True,
+                'ic_x': r.folder.ic_x if r.folder else 500,
+                'ic_y': r.folder.ic_y if r.folder else 470,
+                'ic_size': r.folder.ic_size if r.folder else 28,
+                'text_color': r.folder.text_color if r.folder else '#f0f4f8',
+                'font_family': r.folder.font_family if r.folder else 'Palatino, serif',
+                'timestamp': r.timestamp.strftime('%d %B %Y, %I:%M %p'),
+                'raw_date': r.timestamp.isoformat(),
+                'certificate_generated': r.certificate_generated,
+            })
+
+        return Response({'status': 'success', 'data': data})
 
 
 # ──────────────────────────────────────────────
@@ -698,17 +748,17 @@ class DownloadCertificateView(views.APIView):
     def get(self, request, record_id):
         record = get_object_or_404(AttendanceRecord, id=record_id)
 
-        # Require the last 4 digits of the participant's IC number to verify identity.
+        # Require the last 6 digits of the participant's IC number to verify identity.
         # This prevents blind enumeration of certificates by UUID.
         ic_verify = (request.query_params.get('ic') or '').strip()
-        if not ic_verify or len(ic_verify) < 4:
+        if not ic_verify or len(ic_verify) < 6:
             return Response(
-                {'status': 'error', 'message': 'Verification required. Provide ?ic= with the last 4 digits of your IC.'},
+                {'status': 'error', 'message': 'Verification required. Provide ?ic= with the last 6 digits of your IC.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        record_ic_suffix = (record.clean_ic_number or '')[-4:]
-        if not record_ic_suffix or not hmac.compare_digest(ic_verify[-4:], record_ic_suffix):
+        record_ic_suffix = (record.clean_ic_number or '')[-6:]
+        if not record_ic_suffix or not hmac.compare_digest(ic_verify[-6:], record_ic_suffix):
             return Response(
                 {'status': 'error', 'message': 'IC verification failed.'},
                 status=status.HTTP_403_FORBIDDEN,
@@ -735,6 +785,41 @@ class DownloadCertificateView(views.APIView):
             {'status': 'error', 'message': 'PDF generation failed. Install weasyprint: pip install weasyprint'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
+
+
+class MarkCertificateGeneratedView(views.APIView):
+    """
+    POST: Mark a certificate as generated/downloaded for a given record.
+    Public endpoint with IC verification (last 4 digits) to prevent abuse.
+    Used by the public "Semak Status Sijil" page after client-side certificate download.
+    """
+    authentication_classes = []
+    permission_classes = [AllowAny]
+    throttle_classes = [GenerateThrottle, AggressiveIPThrottle]
+
+    def post(self, request, record_id):
+        record = get_object_or_404(AttendanceRecord, id=record_id)
+
+        # Require the last 6 digits of the participant's IC number to verify identity
+        ic_verify = re.sub(r'\D', '', (request.data.get('ic') or ''))
+        if not ic_verify or len(ic_verify) < 6:
+            return Response(
+                {'status': 'error', 'message': 'Verification required. Provide ic with the last 6 digits of your IC.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        record_ic_suffix = (record.clean_ic_number or '')[-6:]
+        if not record_ic_suffix or not hmac.compare_digest(ic_verify[-6:], record_ic_suffix):
+            return Response(
+                {'status': 'error', 'message': 'IC verification failed.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        AttendanceRecord.objects.filter(id=record.id, certificate_generated=False).update(
+            certificate_generated=True
+        )
+
+        return Response({'status': 'success'})
 
 
 class HealthCheckView(views.APIView):

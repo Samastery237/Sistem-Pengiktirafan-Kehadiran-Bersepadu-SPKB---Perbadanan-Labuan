@@ -228,17 +228,17 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_THROTTLE_RATES': {
         # General protection
-        'anon': '50/day',         # General protection for anonymous endpoints
-        'user': '50000/day',        # General protection for authenticated users
+        'anon': '200/day',        # General protection for anonymous endpoints
+        'user': '100000/day',       # General protection for authenticated users
         # Authentication endpoints
-        'login': '500/minute',      # Strict brute-force protection for the login endpoint
+        'login': '30/minute',       # Strict brute-force protection for the login endpoint
         'create_user': '100/hour', # Account creation
         'password_reset': '3/hour',  # Password reset requests
         # Expensive operations
         'submit': '30/minute',    # Form submissions (was 200 — too permissive)
         'generate': '10/hour',    # Heavy PDF generation (was 20)
         # Global IP-level abuse protection
-        'global_ip': '100/minute',    # Max requests per IP across all endpoints
+        'global_ip': '200/minute',    # Max requests per IP across all endpoints
         'aggressive_ip': '20/minute',  # Strict limit for expensive endpoints
         'bot_detection': '30/minute',  # Limit for suspicious User-Agents
     },
@@ -300,6 +300,7 @@ LOGGING = {
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
+            'filters': ['sensitive_data'],
         },
         'file': {
             'class': 'logging.FileHandler',

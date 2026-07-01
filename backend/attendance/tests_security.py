@@ -166,8 +166,8 @@ class TestSecurityMiddlewareLogging(TestCase):
 
     def test_429_response_logged(self):
         """429 responses should be logged as RATE_LIMITED."""
-        # Exhaust the rate limit
-        for i in range(101):
+        # Exhaust the rate limit (200/minute now)
+        for i in range(201):
             self.client.get(
                 '/api/attendance/health/',
                 HTTP_USER_AGENT=BROWSER_UA,

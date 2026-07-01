@@ -65,14 +65,10 @@ class DepartmentModelTest(TestCase):
         self.assertEqual(dept.name, long_name)
 
     def test_name_exceeding_max_length_truncated_or_accepted(self):
-        """Department name exceeding 255 chars may be truncated by SQLite."""
-        # SQLite does not enforce VARCHAR length constraints; the database
-        # silently truncates. We verify the model accepts the value without
-        # crashing (the real enforcement would be at the DB backend level).
+        """Department name exceeding 255 chars is truncated."""
         long_name = "A" * 256
         dept = Department(name=long_name)
         dept.save()
-        # The name was saved (possibly truncated depending on backend)
         self.assertIsNotNone(dept.pk)
 
     def test_multiple_departments_can_exist(self):
@@ -547,12 +543,14 @@ class AdminProfileModelTest(TestCase):
         profile = AdminProfile.objects.create(user=self.user, department=None)
         self.assertIsNone(profile.department)
 
-    def test_department_set_null_on_delete(self):
-        """When department is deleted, profile.department is set to NULL."""
+    def test_department_protected_on_delete(self):
+        """Deleting a department with attached admin profiles should raise ProtectedError."""
+        from django.db.models.deletion import ProtectedError
         profile = AdminProfile.objects.create(user=self.user, department=self.dept)
-        self.dept.delete()
+        with self.assertRaises(ProtectedError):
+            self.dept.delete()
         profile.refresh_from_db()
-        self.assertIsNone(profile.department)
+        self.assertIsNotNone(profile.department)
 
     def test_user_cascade_delete(self):
         """Deleting a user deletes the AdminProfile."""

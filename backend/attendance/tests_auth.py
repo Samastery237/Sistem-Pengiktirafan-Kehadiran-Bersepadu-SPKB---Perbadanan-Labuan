@@ -770,6 +770,7 @@ class TestUserListViewPOST(DisableThrottleMixin, TestCase):
         )
         self.assertEqual(response.status_code, 403)
 
+    @override_settings(EMAIL_VERIFICATION_REQUIRED=True)
     def test_inactive_user_without_email_no_crash(self):
         """Creating a user with verification required but no email doesn't crash."""
         response = self.client.post(
@@ -1706,6 +1707,7 @@ class TestEmailHelpers(DisableThrottleMixin, TestCase):
         self.dept = Department.objects.create(name="IT")
         self.folder = Folder.objects.create(department=self.dept, name="General")
 
+    @override_settings(EMAIL_VERIFICATION_REQUIRED=True)
     @patch('attendance.auth_views.send_mail')
     def test_verification_email_sent_on_user_creation(self, mock_send):
         """Verification email is sent when user is created with email+verification."""
