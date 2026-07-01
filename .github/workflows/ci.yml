@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 env:
-  DJANGO_SECRET_KEY: ci-insecure-key-for-testing-only
+  DJANGO_SECRET_KEY: ci-insecure-key-for-testing-only-but-now-at-least-50-chars
   DJANGO_DEBUG: "False"
   DJANGO_CACHE_BACKEND: django.core.cache.backends.locmem.LocMemCache
   DJANGO_CACHE_LOCATION: unique
@@ -35,7 +35,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r backend/requirements.txt
       - name: Run ruff
-        run: ruff check backend/
+        run: |
+          pip install ruff
+          ruff check backend/
 
   test-backend:
     runs-on: ubuntu-latest
