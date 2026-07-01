@@ -96,7 +96,7 @@ test.describe('Admin Authentication', () => {
   test('Admin Login and Dashboard', async ({ page }) => {
     const login = new AdminLoginPage(page);
     await login.navigate();
-    await login.login('admin', 'admin123');
+    await login.login('admin', '@Admin1234');
 
     await login.waitForLoginResult();
     await expect(page.locator('#login-error')).not.toHaveClass(/.*show.*/);
@@ -109,7 +109,7 @@ test.describe('Admin Authentication', () => {
     const dashboard = new DashboardPage(page);
 
     await login.navigate();
-    await login.login('admin', 'admin123');
+    await login.login('admin', '@Admin1234');
     await login.isAdminAppVisible();
 
     // Logout
@@ -125,7 +125,7 @@ test.describe('Admin Authentication', () => {
   test('Invalid login shows error', async ({ page }) => {
     const login = new AdminLoginPage(page);
     await login.navigate();
-    await login.login('admin', 'wrongpassword');
+    await login.login('nonexistent_user', 'wrongpassword');
 
     await login.waitForLoginResult();
     await expect(page.locator('#login-error')).toBeVisible({ timeout: 10000 });
@@ -140,7 +140,7 @@ test.describe('Records Management', () => {
   test.beforeEach(async ({ page }) => {
     const login = new AdminLoginPage(page);
     await login.navigate();
-    await login.login('admin', 'admin123');
+    await login.login('admin', '@Admin1234');
     await login.isAdminAppVisible();
   });
 
@@ -193,7 +193,7 @@ test.describe('Certificate Management', () => {
   test.beforeEach(async ({ page }) => {
     const login = new AdminLoginPage(page);
     await login.navigate();
-    await login.login('admin', 'admin123');
+    await login.login('admin', '@Admin1234');
     await login.isAdminAppVisible();
   });
 
@@ -226,7 +226,7 @@ test.describe('Settings & Configuration', () => {
   test.beforeEach(async ({ page }) => {
     const login = new AdminLoginPage(page);
     await login.navigate();
-    await login.login('admin', 'admin123');
+    await login.login('admin', '@Admin1234');
     await login.isAdminAppVisible();
   });
 
@@ -316,7 +316,7 @@ test.describe('Records page additional tests', () => {
   test('Edit modal opens and can be cancelled', async ({ page }) => {
     const login = new AdminLoginPage(page);
     await login.navigate();
-    await login.login('admin', 'admin123');
+    await login.login('admin', '@Admin1234');
     await login.isAdminAppVisible();
 
     const records = new RecordsPage(page);
@@ -342,7 +342,7 @@ test.describe('Records page additional tests', () => {
   test('Bulk select and deselect all', async ({ page }) => {
     const login = new AdminLoginPage(page);
     await login.navigate();
-    await login.login('admin', 'admin123');
+    await login.login('admin', '@Admin1234');
     await login.isAdminAppVisible();
 
     const records = new RecordsPage(page);
@@ -365,7 +365,7 @@ test.describe('Certificate tab additional tests', () => {
   test.beforeEach(async ({ page }) => {
     const login = new AdminLoginPage(page);
     await login.navigate();
-    await login.login('admin', 'admin123');
+    await login.login('admin', '@Admin1234');
     await login.isAdminAppVisible();
   });
 
@@ -385,7 +385,7 @@ test.describe('Settings tab additional tests', () => {
   test.beforeEach(async ({ page }) => {
     const login = new AdminLoginPage(page);
     await login.navigate();
-    await login.login('admin', 'admin123');
+    await login.login('admin', '@Admin1234');
     await login.isAdminAppVisible();
   });
 
@@ -433,7 +433,7 @@ test.describe('Cross-page journey', () => {
     // Step 2: Navigate to admin
     const login = new AdminLoginPage(page);
     await login.navigate();
-    await login.login('admin', 'admin123');
+    await login.login('admin', '@Admin1234');
     await login.isAdminAppVisible();
 
     // Step 3: Go to attendance records

@@ -1,7 +1,7 @@
 /* form.js — Attendance Form Logic (Django Backend) */
 
 // ─── Configuration ───
-const API_BASE = `http://${typeof window !== 'undefined' ? window.location.hostname : 'localhost'}:8000/api/attendance/`;
+const API_BASE = '/api/attendance/';
 
 // Get department and folder from URL parameter
 const urlParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
@@ -116,7 +116,7 @@ async function handleSubmit(e) {
   // Validate
   let valid = true;
   valid = setError('fullname', 'error-fullname', !fullname ? t.errName : '') && valid;
-  valid = setError('ic', 'error-ic', ic && !validateIC(ic) ? t.errIC : '') && valid;
+  valid = setError('ic', 'error-ic', !ic || !validateIC(ic) ? t.errIC : '') && valid;
   valid = setError('phone', 'error-phone', !validatePhone(phone) ? t.errPhone : '') && valid;
   valid = setError('email', 'error-email', !validateEmail(email) ? t.errEmail : '') && valid;
   valid = setError('organization', 'error-organization', !organization ? t.errOrg : '') && valid;

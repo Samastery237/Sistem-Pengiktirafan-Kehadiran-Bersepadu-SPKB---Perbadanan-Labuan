@@ -52,6 +52,10 @@ services:
       - backend/.env
     environment:
       <<: *web-env
+      DJANGO_DB_ENGINE: django.db.backends.postgresql
+      DJANGO_DB_NAME: spkb
+      DJANGO_DB_USER: spkb
+      DJANGO_DB_SSLMODE: prefer
     depends_on:
       db:
         condition: service_healthy

@@ -1,6 +1,6 @@
 /* admin.js — Admin Panel Logic (Django Backend) */
 
-const API_BASE = `${window.location.protocol}//${window.location.hostname}:8000/api/attendance/`;
+const API_BASE = '/api/attendance/';
 
 let currentDepartmentId = null;
 let currentFolderId = null;
@@ -628,6 +628,10 @@ function renderAttendance() {
       <td style="font-size:0.82rem;color:var(--text-muted);">${esc(r.organization) || '—'}</td>
       <td style="font-size:0.82rem;color:var(--text-muted);">${esc(r.folder_name) || '—'}</td>
       <td style="font-size:0.78rem;color:var(--text-muted);">${formattedDate}</td>
+      <td>${r.certificate_generated
+        ? '<span style="display:inline-flex;align-items:center;gap:4px;background:#14532d;color:#4ade80;padding:4px 10px;border-radius:20px;font-size:0.75rem;font-weight:600;"><i data-lucide="badge-check" style="width:14px;height:14px;"></i> Generated</span>'
+        : '<span style="display:inline-flex;align-items:center;gap:4px;background:#451a03;color:#fb923c;padding:4px 10px;border-radius:20px;font-size:0.75rem;font-weight:600;"><i data-lucide="clock" style="width:14px;height:14px;"></i> Pending</span>'
+      }</td>
       <td>
         <div style="display:flex; gap:0.5rem; justify-content:center;">
           <button class="btn btn-sm" onclick="previewCertFor('${r.id}')" title="Papar Sijil" style="padding:0.4rem; background:transparent; border:none; color:#60a5fa;"><i data-lucide="award" style="stroke-width:2.5;"></i></button>

@@ -399,6 +399,21 @@
         
         pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, W, H);
         pdf.save(`Sijil_${p.fullname.replace(/\s+/g, '_')}_${p.folder_name.replace(/\s+/g, '_')}.pdf`);
+
+        // Notify backend that certificate has been generated/downloaded
+        try {
+            const resp = await fetch(API_URL + 'mark-cert-generated/' + p.id + '/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ic: (p.ic_number || '').replace(/\D/g, '').slice(-4) })
+            });
+            if (!resp.ok) {
+                const errData = await resp.json().catch(() => ({}));
+                console.warn('mark-cert-generated failed:', resp.status, errData);
+            }
+        } catch (e) {
+            console.error('Network error marking cert as generated:', e);
+        }
         
         btn.innerHTML = 'Berjaya Dimuat Turun!';
         setTimeout(() => {

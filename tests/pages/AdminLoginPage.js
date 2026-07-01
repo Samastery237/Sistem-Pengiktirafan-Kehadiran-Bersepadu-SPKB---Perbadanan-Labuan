@@ -26,6 +26,7 @@ class AdminLoginPage extends BasePage {
   }
 
   async login(username, password) {
+    await this.goto('/admin.html');
     await this.fillUsername(username);
     await this.fillPassword(password);
     await this.clickLogin();

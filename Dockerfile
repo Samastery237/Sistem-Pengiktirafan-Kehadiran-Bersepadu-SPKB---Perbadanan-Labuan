@@ -15,7 +15,7 @@ RUN apk upgrade --no-cache && \
     freetype-dev \
     harfbuzz-dev \
     musl-dev \
-    postgresql-dev
+    openssl-dev
 
 WORKDIR /app
 COPY backend/requirements.txt /app/
@@ -38,7 +38,11 @@ RUN apk upgrade --no-cache && \
     fontconfig \
     font-liberation \
     freetype \
-    zlib
+    zlib \
+    postgresql-libs \
+    binutils
+
+RUN ln -s /usr/lib/libpq.so.5 /usr/lib/libpq.so
 
 COPY --from=builder /venv /venv
 RUN pip cache purge 2>/dev/null || true

@@ -105,7 +105,7 @@ describe('getCookie', () => {
 });
 
 describe('api', () => {
-  const API_BASE = 'http://localhost:8000/api/attendance/';
+  const API_BASE = '/api/attendance/';
 
   test('GET request includes credentials', async () => {
     fetch.mockResolvedValueOnce(mockFetchResponse());

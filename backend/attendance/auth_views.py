@@ -743,7 +743,6 @@ class PasswordResetConfirmView(views.APIView):
         user.save()
 
         from django.contrib.sessions.models import Session
-        from django.contrib.sessions.backends.db import SessionStore
         active_sessions = Session.objects.filter(
             expire_date__gte=timezone.now()
         )
