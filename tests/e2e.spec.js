@@ -178,9 +178,16 @@ test.describe('Records Management', () => {
     const initialCount = await records.getTableRowCount();
 
     if (initialCount > 0) {
+      const firstText = await records.getFirstRowText();
       await records.deleteRow(0);
       const newCount = await records.getTableRowCount();
-      expect(newCount).toBeLessThan(initialCount);
+      // If paginated (count stays at max), verify a new row shifted in
+      if (newCount === initialCount) {
+        const newFirstText = await records.getFirstRowText();
+        expect(newFirstText).not.toBe(firstText);
+      } else {
+        expect(newCount).toBeLessThan(initialCount);
+      }
     }
   });
 });
